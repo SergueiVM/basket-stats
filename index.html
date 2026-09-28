@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Estadísticas de baloncesto</title>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+--bg:#f5f5f7;--card:#fff;--text:#1c1c1e;--muted:#6b6b70;--line:#dcdce0;--accent:#ea6a1f;--btn:#fff4ec;--ok:#dff3e4;--okt:#1b6b32;--ko:#fbe3e3;--kot:#b3261e;--danger:#c62828}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#121214;--card:#1e1e22;--text:#f2f2f4;--muted:#9a9aa1;--line:#333338;--accent:#ff8a3d;--btn:#2b2119;--ok:#1d3325;--okt:#7fdc99;--ko:#3a1f1f;--kot:#f28b82;--danger:#ef6b6b}}
+:root[data-theme="dark"]{--bg:#121214;--card:#1e1e22;--text:#f2f2f4;--muted:#9a9aa1;--line:#333338;--accent:#ff8a3d;--btn:#2b2119;--ok:#1d3325;--okt:#7fdc99;--ko:#3a1f1f;--kot:#f28b82;--danger:#ef6b6b}
+html{scroll-padding-top:env(safe-area-inset-top,0px);height:100%}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{height:100%;height:100dvh;margin:0;display:flex;flex-direction:column;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overflow:hidden}
+header{flex-shrink:0;display:flex;gap:6px;align-items:center;justify-content:space-between;padding:6px 8px}
+h1{font-size:1rem;margin:0}
+.bar{display:flex;gap:4px}
+.tb{border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:8px;padding:7px 8px;font-size:.75rem;cursor:pointer}
+.tb.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+.tb:disabled{opacity:.4}
+.wrap{flex:1;min-height:0;margin:0 4px;background:var(--card);border-radius:10px;border:1px solid var(--line);padding:0;overflow:auto;display:flex;flex-direction:column}
+.g{display:grid;flex:1 0 auto;padding:3px;gap:3px;grid-template-columns:minmax(0,15fr) minmax(0,8fr) repeat(4,minmax(0,9fr)) repeat(6,minmax(0,6.8fr))}
+.g>div,.g>button{min-width:0;min-height:0}
+.h{position:sticky;top:0;z-index:2;background:var(--card);box-shadow:0 3px 0 var(--card);font-size:clamp(.55rem,2.4vw,.7rem);color:var(--muted);font-weight:700;text-align:center;align-self:end;padding-bottom:2px;text-transform:uppercase}
+.sp{grid-column:span 2}
+.tot{position:sticky;bottom:0;z-index:2;box-shadow:0 -3px 0 var(--card)}
+.nm.tot,.pt.tot{background:var(--card)}
+.nm{font-weight:600;font-size:clamp(.65rem,3vw,.85rem);display:flex;align-items:center;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;padding-left:2px}
+.pt{display:flex;align-items:center;justify-content:center;font-weight:800;font-size:clamp(.85rem,4vw,1.15rem);color:var(--accent)}
+.c,.m,.f{border:none;border-radius:8px;font-weight:700;font-size:clamp(.75rem,3.8vw,1.15rem);cursor:pointer;touch-action:manipulation;padding:0;color:var(--text)}
+.c{background:var(--btn)}
+.c:active{background:var(--accent);color:#fff}
+.m{background:var(--ok);color:var(--okt)}
+.f{background:var(--ko);color:var(--kot)}
+.m:active,.f:active{filter:brightness(.8)}
+.tt{display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:700;font-size:clamp(.65rem,3vw,.85rem);background:var(--bg);border-radius:8px;line-height:1.1}
+.tt small{font-weight:500;color:var(--muted);font-size:.6rem}
+.tt.sp2{grid-column:span 2}
+.ed{display:flex;flex-direction:column;gap:8px;padding:6px}
+.er{display:flex;gap:6px}
+input.n{flex:1;font:inherit;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--text)}
+.del{border:none;background:none;color:var(--danger);font-size:1.3rem;cursor:pointer;padding:6px 10px}
+.hint{flex-shrink:0;color:var(--muted);font-size:.6rem;text-align:center;margin:4px 8px 6px;line-height:1.3}
+</style>
+</head>
+<body>
+<header>
+  <h1>🏀 Estadísticas</h1>
+  <div class="bar">
+    <button class="tb" id="undo">↩ Deshacer</button>
+    <button class="tb" id="edit">✏️ Jugadores</button>
+    <button class="tb" id="reset">Nuevo</button>
+  </div>
+</header>
+<div class="wrap" id="w"></div>
+<p class="hint" id="hint"></p>
+
+<script>
+var KEY="bball-stats-v2";
+var state={players:[],editing:false};
+var undo=[];
+var uid=0;
+
+function newPlayer(name){uid++;return {id:Date.now()+"-"+uid,name:name,s:[0,0,0,0],sh:[[0,0],[0,0],[0,0]]};}
+function load(){
+  try{var r=localStorage.getItem(KEY);if(r){var d=JSON.parse(r);if(d&&d.players&&d.players.length){state.players=d.players;return;}}}catch(e){}
+  for(var i=1;i<=10;i++)state.players.push(newPlayer("Jugador "+i));
+}
+function save(){try{localStorage.setItem(KEY,JSON.stringify({players:state.players}));}catch(e){}}
+function esc(s){return s.replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
+function pts(p){return p.sh[0][0]+2*p.sh[1][0]+3*p.sh[2][0];}
+
+function render(){
+  var P=state.players,h="",n=P.length;
+  if(state.editing){
+    h='<div class="ed">';
+    P.forEach(function(p,i){h+='<div class="er"><input class="n" data-i="'+i+'" value="'+esc(p.name)+'" maxlength="20"><button class="del" data-del="'+i+'" aria-label="Eliminar">✕</button></div>';});
+    h+='<button class="tb" id="addp" style="padding:12px">+ Añadir jugador</button></div>';
+  }else{
+    h='<div class="g" style="grid-template-rows:auto repeat('+n+',minmax(32px,1fr)) auto">';
+    h+='<div class="h">Jug.</div><div class="h">Pts</div><div class="h">Fal</div><div class="h">Pér</div><div class="h">Rob</div><div class="h">Reb</div><div class="h sp">TL</div><div class="h sp">T2</div><div class="h sp">T3</div>';
+    P.forEach(function(p,i){
+      h+='<div class="nm">'+esc(p.name)+'</div><div class="pt">'+pts(p)+'</div>';
+      p.s.forEach(function(v,j){h+='<button class="c" data-i="'+i+'" data-j="'+j+'">'+v+'</button>';});
+      p.sh.forEach(function(v,k){h+='<button class="m" data-i="'+i+'" data-k="'+k+'" data-r="0">'+v[0]+'</button><button class="f" data-i="'+i+'" data-k="'+k+'" data-r="1">'+v[1]+'</button>';});
+    });
+    h+='<div class="nm tot">Total</div><div class="pt tot">'+P.reduce(function(a,p){return a+pts(p);},0)+'</div>';
+    for(var j=0;j<4;j++)h+='<div class="tt tot">'+P.reduce(function(a,p){return a+p.s[j];},0)+'</div>';
+    for(var k=0;k<3;k++){
+      var m=P.reduce(function(a,p){return a+p.sh[k][0];},0),f=P.reduce(function(a,p){return a+p.sh[k][1];},0);
+      h+='<div class="tt sp2 tot">'+m+"/"+(m+f)+"<small>"+(m+f?Math.round(100*m/(m+f))+"%":"–")+"</small></div>";
+    }
+    h+='</div>';
+  }
+  document.getElementById("w").innerHTML=h;
+  document.getElementById("edit").classList.toggle("on",state.editing);
+  document.getElementById("edit").textContent=state.editing?"✔ Listo":"✏️ Jugadores";
+  document.getElementById("undo").disabled=!undo.length||state.editing;
+  document.getElementById("hint").textContent=state.editing?"Edita nombres, añade o elimina jugadores y pulsa «Listo».":"Fal=Faltas · Pér=Pérdidas · Rob=Robos · Reb=Rebotes · TL=T. libre · T2 · T3 (verde = acierto, rojo = fallo)";
+}
+
+document.getElementById("w").addEventListener("click",function(e){
+  var b=e.target.closest("button");if(!b)return;
+  if(b.id==="addp"){state.players.push(newPlayer("Jugador "+(state.players.length+1)));save();render();return;}
+  if(b.dataset.del!==undefined){
+    if(confirm("¿Eliminar a este jugador?")){state.players.splice(+b.dataset.del,1);save();render();}
+    return;
+  }
+  var i=b.dataset.i;if(i===undefined)return;
+  var p=state.players[+i];
+  if(b.dataset.j!==undefined){p.s[+b.dataset.j]++;undo.push([p.id,"s",+b.dataset.j]);}
+  else if(b.dataset.k!==undefined){p.sh[+b.dataset.k][+b.dataset.r]++;undo.push([p.id,"sh",+b.dataset.k,+b.dataset.r]);}
+  else return;
+  if(navigator.vibrate){try{navigator.vibrate(15);}catch(x){}}
+  save();render();
+});
+document.getElementById("w").addEventListener("input",function(e){
+  if(e.target.classList.contains("n")){state.players[+e.target.dataset.i].name=e.target.value;save();}
+});
+document.getElementById("undo").onclick=function(){
+  var u=undo.pop();if(!u)return;
+  var p=state.players.filter(function(x){return x.id===u[0];})[0];
+  if(p){
+    if(u[1]==="s"){if(p.s[u[2]]>0)p.s[u[2]]--;}
+    else if(p.sh[u[2]][u[3]]>0)p.sh[u[2]][u[3]]--;
+  }
+  save();render();
+};
+document.getElementById("edit").onclick=function(){state.editing=!state.editing;render();};
+document.getElementById("reset").onclick=function(){
+  if(confirm("¿Empezar un nuevo partido? Se pondrán todas las estadísticas a cero (los jugadores se mantienen).")){
+    state.players.forEach(function(p){p.s=[0,0,0,0];p.sh=[[0,0],[0,0],[0,0]];});undo=[];save();render();
+  }
+};
+load();render();
+</script>
+</body>
+</html>
