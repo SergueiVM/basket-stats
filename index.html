@@ -4,6 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Estadísticas de baloncesto - registro</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#ea6a1f">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Baloncesto">
+<meta name="mobile-web-app-capable" content="yes">
 <style>
 :root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
 --bg:#f5f5f7;--card:#fff;--text:#1c1c1e;--muted:#6b6b70;--line:#dcdce0;--accent:#ea6a1f;--btn:#fff4ec;--ok:#dff3e4;--okt:#1b6b32;--ko:#fbe3e3;--kot:#b3261e;--danger:#c62828;--riv:#2f6fed}
@@ -90,6 +98,7 @@ tr.riv td.pt{color:var(--riv)}
 .leg{font-size:.7rem;color:var(--muted)}
 .ex{display:flex;gap:8px}
 .ex .tb{flex:1;padding:12px;font-size:.85rem}
+.tnameinput{font:inherit;font-weight:700;font-size:1rem;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--text);width:100%}
 </style>
 </head>
 <body>
@@ -103,7 +112,7 @@ var ACT=[
 ];
 var GROUPS=[{id:"fal",l:"Falta"},{id:"per",l:"Pérdida"},{id:"rob",l:"Robo"},{id:"reb",l:"Rebote"},{id:"lib",l:"Tiro libre"},{id:"d2",l:"Tiro de 2"},{id:"t3",l:"Tiro de 3"}];
 function act(id){return ACT.filter(function(a){return a.id===id;})[0];}
-var S={players:[],events:[],enabled:{fal:1,per:1,rob:1,reb:1,lib:1,d2:1,t3:1},periods:4,period:1,home:true,theme:"system",sel:null,view:"main",msg:"",warn:false};
+var S={players:[],events:[],teams:[],activeTeam:null,teamChoice:"",editTeamId:null,enabled:{fal:1,per:1,rob:1,reb:1,lib:1,d2:1,t3:1},periods:4,period:1,home:true,theme:"system",sel:null,view:"main",msg:"",warn:false};
 var seq=0;
 function uid(){seq++;return Date.now().toString(36)+seq;}
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
@@ -128,9 +137,10 @@ function applyLoaded(d){
   S.periods=d.periods||4;S.period=Math.min(d.period||1,S.periods);
   S.home=d.home===undefined?true:!!d.home;
   if(d.enabled)for(var k in S.enabled)if(k in d.enabled)S.enabled[k]=!!d.enabled[k];
+  S.teams=d.teams||[];S.activeTeam=d.activeTeam||null;S.teamChoice=S.activeTeam||(S.teams[0]&&S.teams[0].id)||"";
 }
 function load(){
-  try{var r=localStorage.getItem(KEY);if(r){var d=JSON.parse(r);if(d&&d.players&&d.players.length){applyLoaded(d);return;}}}catch(e){}
+  try{var r=localStorage.getItem(KEY);if(r){var d=JSON.parse(r);if(d&&(Array.isArray(d.players)||Array.isArray(d.teams))){applyLoaded(d);return;}}}catch(e){}
   try{
     var r1=localStorage.getItem(OLDKEY);
     if(r1){var d1=JSON.parse(r1);
@@ -143,7 +153,17 @@ function load(){
   }catch(e){}
   for(var i=1;i<=10;i++)S.players.push({id:uid(),num:String(i),name:""});
 }
-function save(){try{localStorage.setItem(KEY,JSON.stringify({players:S.players,events:S.events,enabled:S.enabled,periods:S.periods,period:S.period,home:S.home}));}catch(e){}}
+function save(){
+  try{
+    localStorage.setItem(KEY,JSON.stringify({players:S.players,events:S.events,teams:S.teams,activeTeam:S.activeTeam,enabled:S.enabled,periods:S.periods,period:S.period,home:S.home}));
+    return true;
+  }catch(e){
+    S.msg="No se pudo guardar. Revisa el almacenamiento del navegador.";S.warn=true;
+    return false;
+  }
+}
+function blankRoster(){return Array.from({length:10},function(_,i){return {id:uid(),num:String(i+1),name:""};});}
+function findTeam(id){return S.teams.filter(function(t){return t.id===id;})[0];}
 function applyTheme(t){
   if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t);
   else document.documentElement.removeAttribute("data-theme");
@@ -153,9 +173,58 @@ function setTheme(t){S.theme=t;try{localStorage.setItem("bball-theme",t);}catch(
 function flash(m,w){S.msg=m;S.warn=!!w;render();setTimeout(function(){if(S.msg===m){S.msg="";S.warn=false;if(S.view==="main")render();}},1700);}
 function scoreOf(side){var t=0;S.events.forEach(function(e){if(e.side!==side)return;if(e.a==="l1")t+=1;else if(e.a==="d1")t+=2;else if(e.a==="t1")t+=3;});return t;}
 
+function handleTeamAction(action){
+  if(action==="loadselected"){
+    var team=findTeam(S.teamChoice);
+    if(!team)return true;
+    if(!confirm('¿Cargar el equipo "'+team.name+'"? Sustituye a los jugadores actuales y empieza un partido nuevo (se borra el registro).'))return true;
+    S.players=team.players.map(function(p){return {id:uid(),num:p.num,name:p.name};});
+    S.events=[];S.period=1;S.sel=null;S.activeTeam=team.id;S.teamChoice=team.id;S.view="main";save();
+    return true;
+  }
+  if(action==="editselected"){
+    if(!findTeam(S.teamChoice))return true;
+    S.editTeamId=S.teamChoice;S.view="team";
+    return true;
+  }
+  if(action==="deleteselected"){
+    var teamToDelete=findTeam(S.teamChoice);
+    if(!teamToDelete)return true;
+    if(!confirm('¿Eliminar el equipo "'+teamToDelete.name+'"? Esto no afecta al partido actual.'))return true;
+    S.teams=S.teams.filter(function(team){return team.id!==teamToDelete.id;});
+    if(S.activeTeam===teamToDelete.id)S.activeTeam=null;
+    S.teamChoice=(S.teams[0]&&S.teams[0].id)||"";save();
+    return true;
+  }
+  if(action==="clearteams"){
+    if(!S.teams.length)return true;
+    if(!confirm("¿Borrar todos los equipos guardados? El partido actual no se modificará."))return true;
+    S.teams=[];S.activeTeam=null;S.teamChoice="";save();
+    return true;
+  }
+  if(action==="newteam"){
+    var name=prompt("Nombre del nuevo equipo:");
+    if(name===null)return true;
+    name=name.trim();if(!name)return true;
+    var newTeam={id:uid(),name:name,players:blankRoster()};
+    S.teams.push(newTeam);S.teamChoice=newTeam.id;save();
+    S.editTeamId=newTeam.id;S.view="team";
+    return true;
+  }
+  if(action==="saveteam"){
+    var copyName=prompt("Guardar la plantilla actual como equipo. Nombre:");
+    if(copyName===null)return true;
+    copyName=copyName.trim();if(!copyName)return true;
+    var copiedTeam={id:uid(),name:copyName,players:S.players.map(function(p){return {id:uid(),num:p.num,name:p.name};})};
+    S.teams.push(copiedTeam);S.teamChoice=copiedTeam.id;save();
+    return true;
+  }
+  return false;
+}
+
 function render(){
   var h="";
-  if(S.view==="set")h=setView();else if(S.view==="sum")h=sumView();else h=mainView();
+  if(S.view==="set")h=setView();else if(S.view==="sum")h=sumView();else if(S.view==="team")h=teamView();else h=mainView();
   document.getElementById("app").innerHTML=h;
 }
 
@@ -197,10 +266,36 @@ function setView(){
   h+='<div class="sec">Apariencia</div><div class="seg">'+["system","light","dark"].map(function(t){return '<button class="'+(S.theme===t?"on":"")+'" data-theme="'+t+'">'+(t==="system"?"Sistema":t==="light"?"Claro":"Oscuro")+'</button>';}).join("")+'</div>';
   h+='<div class="sec">Acciones a registrar</div>';
   GROUPS.forEach(function(g){h+='<label class="ck"><input type="checkbox" data-grp="'+g.id+'"'+(S.enabled[g.id]?" checked":"")+'>'+g.l+'</label>';});
-  h+='<div class="sec">Jugadores (dorsal o inicial, y nombre)</div>';
+  h+='<div class="sec">Equipos guardados</div>';
+  if(S.teams.length){
+    var selected=S.teams.filter(function(t){return t.id===S.teamChoice;})[0]||S.teams[0];
+    h+='<select id="teamselect" class="tnameinput">'+S.teams.map(function(t){return '<option value="'+t.id+'"'+(selected.id===t.id?' selected':'')+'>'+esc(t.name)+(S.activeTeam===t.id?' · En uso':'')+'</option>';}).join('')+'</select>';
+    h+='<div class="ex"><button class="tb pri" data-x="loadselected">Cargar equipo</button><button class="tb" data-x="editselected">Editar</button></div>';
+    h+='<div class="ex"><button class="tb dg" data-x="deleteselected">Borrar equipo</button><button class="tb dg" data-x="clearteams">Borrar todos</button></div>';
+  }else h+='<div class="leg">Aún no has guardado ningún equipo.</div>';
+  h+='<div class="ex"><button class="tb" data-x="newteam">+ Crear equipo desde cero</button><button class="tb" data-x="saveteam">💾 Guardar una copia</button></div>';
+  h+='<div class="sec">Jugadores del partido actual (dorsal o inicial, y nombre)</div>';
+  h+='<div class="leg">'+(S.activeTeam?'Cargados desde «'+esc((findTeam(S.activeTeam)||{}).name||"")+'»':'Plantilla sin guardar')+'</div>';
   S.players.forEach(function(p){h+='<div class="er"><input class="no" data-f="num" data-id="'+p.id+'" value="'+esc(p.num)+'" maxlength="3" placeholder="Nº"><input class="nm" data-f="name" data-id="'+p.id+'" value="'+esc(p.name)+'" maxlength="20" placeholder="Nombre (opcional)"><button class="del" data-delp="'+p.id+'" aria-label="Eliminar">✕</button></div>';});
   h+='<button class="tb" data-x="add" style="padding:12px">+ Añadir jugador</button>';
+  h+='<button class="tb" data-x="blank" style="padding:12px;margin-top:4px">🧹 Resetear partido y plantilla actual</button>';
   h+='<button class="tb dg" data-x="new" style="padding:12px;margin-top:4px">Nuevo partido (borrar registro)</button>';
+  return h+'</div>';
+}
+
+function teamView(){
+  var t=findTeam(S.editTeamId);
+  if(!t)return '<header><h1>Equipo</h1><div class="bar"><button class="tb pri" data-x="back2set">← Volver</button></div></header><div class="pg"><div class="leg">Este equipo ya no existe.</div></div>';
+  var h='<header><h1>Editar equipo</h1><div class="bar"><button class="tb pri" data-x="back2set">✔ Listo</button></div></header><div class="pg">';
+  h+='<div class="sec">Nombre del equipo</div><input class="tnameinput" data-tname="'+t.id+'" value="'+esc(t.name)+'" maxlength="30">';
+  h+='<div class="sec">Jugadores (dorsal o inicial, y nombre)</div>';
+  t.players.forEach(function(p){
+    h+='<div class="er"><input class="no" data-tf="num" data-tid="'+t.id+'|'+p.id+'" value="'+esc(p.num)+'" maxlength="3" placeholder="Nº">'
+      +'<input class="nm" data-tf="name" data-tid="'+t.id+'|'+p.id+'" value="'+esc(p.name)+'" maxlength="20" placeholder="Nombre (opcional)">'
+      +'<button class="del" data-tdelp="'+t.id+'|'+p.id+'" aria-label="Eliminar">✕</button></div>';
+  });
+  h+='<button class="tb" data-taddp="'+t.id+'" style="padding:12px">+ Añadir jugador</button>';
+  h+='<div class="leg">Los cambios aquí solo afectan a esta plantilla guardada, no al partido en curso.</div>';
   return h+'</div>';
 }
 
@@ -276,7 +371,7 @@ function exportCsv(){
   saveFile("estadisticas-baloncesto-"+today().iso+".csv",csv,"text/csv;charset=utf-8");
 }
 
-document.getElementById("app").addEventListener("click",function(e){
+function handleClick(e){
   var b=e.target.closest("button");if(!b)return;
   var d=b.dataset;
   if(d.a){S.sel=S.sel===d.a?null:d.a;S.msg="";render();return;}
@@ -314,31 +409,67 @@ document.getElementById("app").addEventListener("click",function(e){
   }
   if(b.id==="xcsv"){exportCsv();return;}
   if(d.theme){setTheme(d.theme);render();return;}
+  if(d.taddp){
+    var tm=findTeam(d.taddp);if(tm){tm.players.push({id:uid(),num:"",name:""});save();render();}
+    return;
+  }
+  if(d.tdelp){
+    var parts=d.tdelp.split("|"),tm2=findTeam(parts[0]);
+    if(tm2){
+      if(confirm("¿Eliminar a este jugador de la plantilla?")){tm2.players=tm2.players.filter(function(p){return p.id!==parts[1];});save();render();}
+    }
+    return;
+  }
   var x=d.x;if(!x)return;
+  if(handleTeamAction(x)){render();return;}
   if(x==="set"){S.view="set";S.sel=null;}
   else if(x==="fin"){S.view="sum";S.sel=null;}
   else if(x==="back")S.view="main";
+  else if(x==="back2set")S.view="set";
   else if(x==="add"){S.players.push({id:uid(),num:"",name:""});save();}
+  else if(x==="blank"){
+    if(!confirm("¿Sustituir los jugadores actuales por una plantilla en blanco (10 dorsales sin nombre)? Se borrará el registro del partido."))return;
+    S.players=blankRoster();S.events=[];S.period=1;S.sel=null;S.activeTeam=null;save();
+  }
   else if(x==="new"){
     if(!confirm("¿Empezar un nuevo partido? Se borrará todo el registro (jugadores y ajustes se mantienen)."))return;
     S.events=[];S.sel=null;S.period=1;S.view="main";save();
   }
   render();
-});
-document.getElementById("app").addEventListener("change",function(e){
+}
+
+function handleChange(e){
   var t=e.target;
+  if(t.id==="teamselect"){S.teamChoice=t.value;return;}
   if(t.dataset.grp){S.enabled[t.dataset.grp]=t.checked?1:0;save();return;}
   if(t.id==="home"){S.home=t.checked;save();return;}
   if(t.id==="nper"){
     var v=Math.max(1,Math.min(8,parseInt(t.value,10)||4));
     S.periods=v;if(S.period>v)S.period=v;save();
   }
-});
-document.getElementById("app").addEventListener("input",function(e){
-  var t=e.target;if(!t.dataset.f)return;
-  var p=pl(t.dataset.id);if(p){p[t.dataset.f]=t.value;save();}
-});
+}
+
+function handleInput(e){
+  var t=e.target;
+  if(t.dataset.f){var p=pl(t.dataset.id);if(p){p[t.dataset.f]=t.value;save();}return;}
+  if(t.dataset.tf){
+    var parts=t.dataset.tid.split("|"),tm=findTeam(parts[0]),tp=tm&&tm.players.filter(function(x){return x.id===parts[1];})[0];
+    if(tp){tp[t.dataset.tf]=t.value;save();}
+    return;
+  }
+  if(t.dataset.tname){var tm2=findTeam(t.dataset.tname);if(tm2){tm2.name=t.value;save();}return;}
+}
+
+var app=document.getElementById("app");
+app.addEventListener("click",handleClick);
+app.addEventListener("change",handleChange);
+app.addEventListener("input",handleInput);
 loadTheme();load();render();
+if("serviceWorker" in navigator){
+  window.addEventListener("load",function(){
+    navigator.serviceWorker.register("sw.js").catch(function(){});
+  });
+}
 </script>
 </body>
 </html>
