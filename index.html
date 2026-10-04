@@ -53,8 +53,18 @@ h1{font-size:1rem;margin:0}
 .msg.warn{color:var(--danger);font-weight:700}
 .pkoverlay{position:fixed;inset:0;background:rgba(0,0,0,.52);display:flex;align-items:center;justify-content:center;z-index:60;padding:16px}
 .pksheet{background:var(--card);width:100%;max-width:520px;border-radius:18px;padding:10px 10px calc(10px + env(safe-area-inset-bottom,0px));max-height:85vh;overflow-y:auto}
-.pkhead{display:flex;align-items:center;justify-content:space-between;font-weight:800;font-size:1.05rem;padding:6px 6px 12px}
-.pkhead button{border:none;background:none;color:var(--muted);font-size:1.4rem;padding:4px 8px;cursor:pointer;line-height:1}
+.pkhead{display:flex;align-items:center;justify-content:space-between;gap:8px;font-weight:800;font-size:1.05rem;padding:6px 6px 12px}
+.pkhead button{flex-shrink:0;border:none;background:none;color:var(--muted);font-size:1.4rem;padding:4px 8px;cursor:pointer;line-height:1}
+.pktitle{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0}
+.pkbadge{font-weight:800;padding:5px 11px;border-radius:9px;font-size:.95rem;background:var(--btn);color:var(--text);white-space:nowrap}
+.pkbadge.m{background:var(--ok);color:var(--okt)}
+.pkbadge.f{background:var(--ko);color:var(--kot)}
+.pksub{font-size:.78rem;color:var(--muted);font-weight:600}
+.pkactlist{display:flex;flex-direction:column;gap:6px;padding:0 2px 8px}
+.pkact{text-align:left;padding:13px 14px;border:none;border-radius:11px;font-weight:700;font-size:.9rem;cursor:pointer;background:var(--btn);color:var(--text)}
+.pkact.m{background:var(--ok);color:var(--okt)}
+.pkact.f{background:var(--ko);color:var(--kot)}
+.pksub2{font-weight:500;opacity:.8;font-size:.8rem}
 .pl.pk{padding:0 2px 10px}
 .pl.pk .p{height:74px}
 .teams.pk{padding:0 2px 10px}
@@ -93,7 +103,10 @@ h1{font-size:1rem;margin:0}
 .ev .k.f{background:var(--ko);color:var(--kot)}
 .ev .w{min-width:0;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ev .w.riv{color:var(--riv)}
-.ev button{flex-shrink:0;border:none;background:none;color:var(--danger);font-size:1.25rem;padding:6px 8px;cursor:pointer}
+.ev .btns{display:flex;flex-shrink:0;gap:0}
+.ev .btns button{border:none;background:none;font-size:1.1rem;padding:6px 7px;cursor:pointer}
+.ev .btns .editbtn{color:var(--muted)}
+.ev .btns .delbtn{color:var(--danger);font-size:1.25rem}
 .pg{padding:8px;display:flex;flex-direction:column;gap:10px;overflow-y:auto}
 .sec{font-weight:700;font-size:.75rem;color:var(--muted);text-transform:uppercase;margin-top:4px}
 .er{display:flex;gap:6px}
@@ -134,9 +147,16 @@ tr.riv td.pt{color:var(--riv)}
 <script>
 var KEY="bball-log-v2",OLDKEY="bball-log-v1";
 var ACT=[
- {id:"fal",l:"Falta",k:"n",grp:"fal"},{id:"per",l:"Pérdida",k:"n",grp:"per"},{id:"rob",l:"Robo",k:"n",grp:"rob"},{id:"reb",l:"Rebote",k:"n",grp:"reb"},
- {id:"l1",l:"T. libre ✓",k:"m",grp:"lib"},{id:"d1",l:"Tiro 2 ✓",k:"m",grp:"d2"},{id:"t1",l:"Tiro 3 ✓",k:"m",grp:"t3"},
- {id:"l0",l:"T. libre ✗",k:"f",grp:"lib"},{id:"d0",l:"Tiro 2 ✗",k:"f",grp:"d2"},{id:"t0",l:"Tiro 3 ✗",k:"f",grp:"t3"}
+ {id:"fal",l:"Falta",k:"n",grp:"fal",cat:"Falta",sub:""},
+ {id:"per",l:"Pérdida",k:"n",grp:"per",cat:"Pérdida",sub:""},
+ {id:"rob",l:"Robo",k:"n",grp:"rob",cat:"Robo",sub:""},
+ {id:"reb",l:"Rebote",k:"n",grp:"reb",cat:"Rebote",sub:""},
+ {id:"l1",l:"T. libre ✓",k:"m",grp:"lib",cat:"Tiro libre",sub:"✓ acierto"},
+ {id:"d1",l:"Tiro 2 ✓",k:"m",grp:"d2",cat:"Tiro de 2",sub:"✓ acierto"},
+ {id:"t1",l:"Tiro 3 ✓",k:"m",grp:"t3",cat:"Tiro de 3",sub:"✓ acierto"},
+ {id:"l0",l:"T. libre ✗",k:"f",grp:"lib",cat:"Tiro libre",sub:"✗ fallo"},
+ {id:"d0",l:"Tiro 2 ✗",k:"f",grp:"d2",cat:"Tiro de 2",sub:"✗ fallo"},
+ {id:"t0",l:"Tiro 3 ✗",k:"f",grp:"t3",cat:"Tiro de 3",sub:"✗ fallo"}
 ];
 var GROUPS=[{id:"fal",l:"Falta"},{id:"per",l:"Pérdida"},{id:"rob",l:"Robo"},{id:"reb",l:"Rebote"},{id:"lib",l:"Tiro libre"},{id:"d2",l:"Tiro de 2"},{id:"t3",l:"Tiro de 3"}];
 function act(id){return ACT.filter(function(a){return a.id===id;})[0];}
@@ -172,10 +192,14 @@ function evLabel(e){
   if(e.a==="reb"&&e.off!==undefined)return a.l+(e.off?" ofensivo":" defensivo");
   return a.l;
 }
-function battery(n,cls){
+function badge(text,k){return '<span class="pkbadge '+(k||"n")+'">'+esc(text)+'</span>';}
+function subTitle(a){return badge(a.cat,a.k)+(a.sub?'<span class="pksub">'+esc(a.sub)+'</span>':"");}
+function battery(n,cls,max){
+  max=max||5;
   var c=cls||"bat";
-  return '<span class="'+c+'">'+Array.from({length:5},function(_,i){return '<i class="'+(i<n?"on"+(n>=5?" over":""):"")+'"></i>';}).join("")+'</span>';
+  return '<span class="'+c+'">'+Array.from({length:max},function(_,i){return '<i class="'+(i<n?"on"+(n>=max?" over":""):"")+'"></i>';}).join("")+'</span>';
 }
+function selectablePlayers(){return sortedPlayers().filter(function(p){return foulsOf(p.id)<7;});}
 function applyLoaded(d){
   S.players=d.players||[];S.events=d.events||[];
   S.periods=d.periods||4;S.period=Math.min(d.period||1,S.periods);
@@ -220,25 +244,55 @@ function pickTarget(side,p){
   if(o&&o.onPick)o.onPick(side,p);
   render();
 }
+function pickAction(id){
+  var o=S.picker;S.picker=null;
+  if(o&&o.onPickAction)o.onPickAction(id);
+  render();
+}
 function renderPicker(){
   var o=S.picker;if(!o)return "";
-  var h='<div class="pkoverlay" data-pkclose="1"><div class="pksheet">';
-  h+='<div class="pkhead"><span>'+esc(o.title)+'</span><button data-pkcancel="1" aria-label="Cerrar">✕</button></div>';
-  h+='<div class="pl pk">'+sortedPlayers().map(function(p){
-    return '<button class="p" data-pks="us" data-pkp="'+p.id+'">'+esc(lab(p))+(p.name?'<small>'+esc(p.name)+'</small>':'')+'</button>';
-  }).join("")+'</div>';
-  if(o.teamRow!==false){
-    h+='<div class="teams pk"><button class="tus" data-pks="us" data-pkp="">Equipo</button>';
-    if(o.rival!==false)h+='<button class="triv" data-pks="rival" data-pkp="">Rival</button>';
-    h+='</div>';
+  var h='<div class="pkoverlay"><div class="pksheet">';
+  h+='<div class="pkhead"><span class="pktitle">'+(o.titleHtml||esc(o.title||""))+'</span><button data-pkcancel="1" aria-label="Cerrar">✕</button></div>';
+  if(o.actions){
+    h+='<div class="pkactlist">'+o.actions.map(function(a){
+      return '<button class="pkact '+a.k+'" data-pkact="'+a.id+'">'+esc(a.cat)+(a.sub?' <span class="pksub2">'+esc(a.sub)+'</span>':'')+'</button>';
+    }).join("")+'</div>';
+  }else{
+    var plist=o.allPlayers?sortedPlayers():selectablePlayers();
+    if(plist.length)h+='<div class="pl pk">'+plist.map(function(p){
+      return '<button class="p" data-pks="us" data-pkp="'+p.id+'">'+esc(lab(p))+(p.name?'<small>'+esc(p.name)+'</small>':'')+'</button>';
+    }).join("")+'</div>';
+    if(o.teamRow!==false){
+      h+='<div class="teams pk"><button class="tus" data-pks="us" data-pkp="">Equipo</button>';
+      if(o.rival!==false)h+='<button class="triv" data-pks="rival" data-pkp="">Rival</button>';
+      h+='</div>';
+    }
+    if(o.extra)h+='<button class="pkextra" data-pkcancel="1">'+esc(o.extra)+'</button>';
   }
-  if(o.extra)h+='<button class="pkextra" data-pkcancel="1">'+esc(o.extra)+'</button>';
   h+='</div></div>';
   return h;
 }
 function startAction(id){
   var a=act(id);
-  openPicker({title:a.l,teamRow:true,rival:true,extra:null,onPick:function(side,p){finalizeAction(id,side,p);}});
+  openPicker({titleHtml:subTitle(a),teamRow:true,rival:true,extra:null,onPick:function(side,p){finalizeAction(id,side,p);}});
+}
+function startEdit(evId){
+  var ev=S.events.filter(function(v){return v.id===evId;})[0];if(!ev)return;
+  openPicker({
+    titleHtml:badge("Editar","n"),
+    actions:ACT.filter(function(a){return S.enabled[a.grp];}),
+    onPickAction:function(newId){
+      var a=act(newId);
+      openPicker({
+        titleHtml:subTitle(a),teamRow:true,rival:true,extra:"Cancelar",allPlayers:true,
+        onPick:function(side,p){
+          ev.a=newId;ev.side=side;ev.p=p;delete ev.pairId;if(newId!=="reb")delete ev.off;
+          save();flash("✔ Editado · "+a.cat+" · "+whoLbl(side,p));
+        },
+        onCancel:function(){}
+      });
+    }
+  });
 }
 function finalizeAction(id,side,p){
   var a=act(id);
@@ -251,11 +305,15 @@ function finalizeAction(id,side,p){
       save();flash("✔ "+a.l+" · "+whoLbl(side,p)+" · Pérdida automática al rival");
     }else{
       save();flash("✔ "+a.l+" · "+whoLbl(side,p));
-      openPicker({
-        title:"¿Quién perdió el balón?",teamRow:false,extra:"Cancelar",
-        onPick:function(side2,p2){S.events.push({id:uid(),side:"us",p:p2,a:"per",q:S.period,pairId:pairId});save();},
-        onCancel:function(){S.events.push({id:uid(),side:"us",p:null,a:"per",q:S.period,pairId:pairId});save();}
-      });
+      if(!selectablePlayers().length){
+        S.events.push({id:uid(),side:"us",p:null,a:"per",q:S.period,pairId:pairId});save();
+      }else{
+        openPicker({
+          titleHtml:badge("Pérdida","n")+'<span class="pksub">¿quién la perdió?</span>',teamRow:false,extra:"Equipo",
+          onPick:function(side2,p2){S.events.push({id:uid(),side:"us",p:p2,a:"per",q:S.period,pairId:pairId});save();},
+          onCancel:function(){S.events.push({id:uid(),side:"us",p:null,a:"per",q:S.period,pairId:pairId});save();}
+        });
+      }
     }
     return;
   }
@@ -264,7 +322,7 @@ function finalizeAction(id,side,p){
   flash("✔ "+a.l+" · "+whoLbl(side,p));
   if((id==="l0"||id==="d0"||id==="t0")&&S.enabled.reb){
     openPicker({
-      title:"¿Quién coge el rebote?",teamRow:true,rival:true,extra:"Cancelar",
+      titleHtml:badge("Rebote","n")+'<span class="pksub">¿quién lo coge?</span>',teamRow:true,rival:true,extra:"No hay rebote",
       onPick:function(side3,p3){
         var off=side3===side;
         S.events.push({id:uid(),side:side3,p:p3,a:"reb",q:S.period,off:off});save();
@@ -302,14 +360,14 @@ function mainView(){
   }
   h+=S.msg?'<div class="msg'+(S.warn?" warn":"")+'">'+esc(S.msg)+'</div>':'<div class="msg">Pulsa una acción para registrar una jugada</div>';
   h+='<div class="logh">Jugadores</div><div class="roster">'+sortedPlayers().map(function(p){
-    return '<div class="p ro">'+esc(lab(p))+(p.name?'<small>'+esc(p.name)+'</small>':'')+'<span class="pts">'+ptsOf(p.id)+' pts</span>'+battery(foulsOf(p.id),"pbat")+'</div>';
+    return '<div class="p ro">'+esc(lab(p))+(p.name?'<small>'+esc(p.name)+'</small>':'')+'<span class="pts">'+ptsOf(p.id)+' pts</span>'+battery(foulsOf(p.id),"pbat",7)+'</div>';
   }).join("")+'</div>';
   h+='<div class="logh">Registro ('+S.events.length+') · más reciente primero</div><div class="log">';
   if(!S.events.length)h+='<div class="empty">Aún no hay acciones registradas</div>';
   var n=S.events.length;
   S.events.slice().reverse().forEach(function(e,i){
     var a=act(e.a);
-    h+='<div class="ev"><div class="info"><span class="n">'+(n-i)+'</span><span class="q">'+(S.periods<=4?"C":"T")+(e.q||1)+'</span><span class="k '+a.k+'">'+evLabel(e)+'</span><span class="w'+(e.side==="rival"?" riv":"")+'">'+esc(whoLbl(e.side,e.p))+'</span></div><button data-del="'+e.id+'" aria-label="Borrar">✕</button></div>';
+    h+='<div class="ev"><div class="info"><span class="n">'+(n-i)+'</span><span class="q">'+(S.periods<=4?"C":"T")+(e.q||1)+'</span><span class="k '+a.k+'">'+evLabel(e)+'</span><span class="w'+(e.side==="rival"?" riv":"")+'">'+esc(whoLbl(e.side,e.p))+'</span></div><div class="btns"><button class="editbtn" data-edit="'+e.id+'" aria-label="Editar">✎</button><button class="delbtn" data-del="'+e.id+'" aria-label="Borrar">✕</button></div></div>';
   });
   return h+'</div>';
 }
@@ -334,7 +392,7 @@ function setView(){
   h+='<div class="sec">Jugadores del partido actual (dorsal o inicial, y nombre)</div>';
   h+='<div class="leg">'+(S.activeTeam?'Cargados desde «'+esc((findTeam(S.activeTeam)||{}).name||"")+'»':'Plantilla sin guardar')+'</div>';
   h+='<div class="leg">El indicador de puntos junto a cada jugador muestra sus faltas personales (5 = eliminado).</div>';
-  S.players.forEach(function(p){h+='<div class="er"><input class="no" data-f="num" data-id="'+p.id+'" value="'+esc(p.num)+'" maxlength="3" placeholder="Nº"><input class="nm" data-f="name" data-id="'+p.id+'" value="'+esc(p.name)+'" maxlength="20" placeholder="Nombre (opcional)">'+battery(foulsOf(p.id),"pbat")+'<button class="del" data-delp="'+p.id+'" aria-label="Eliminar">✕</button></div>';});
+  S.players.forEach(function(p){h+='<div class="er"><input class="no" data-f="num" data-id="'+p.id+'" value="'+esc(p.num)+'" maxlength="3" placeholder="Nº"><input class="nm" data-f="name" data-id="'+p.id+'" value="'+esc(p.name)+'" maxlength="20" placeholder="Nombre (opcional)">'+battery(foulsOf(p.id),"pbat",7)+'<button class="del" data-delp="'+p.id+'" aria-label="Eliminar">✕</button></div>';});
   h+='<button class="tb" data-x="add" style="padding:12px">+ Añadir jugador</button>';
   h+='<button class="tb" data-x="blank" style="padding:12px;margin-top:4px">🧹 Plantilla en blanco (10 dorsales sin nombre)</button>';
   h+='<button class="tb dg" data-x="new" style="padding:12px;margin-top:4px">Nuevo partido (borrar registro)</button>';
@@ -437,6 +495,8 @@ document.getElementById("app").addEventListener("click",function(e){
   if(d.per){S.period=+d.per;save();render();return;}
   if(d.pks!==undefined){pickTarget(d.pks,d.pkp||null);return;}
   if(d.pkcancel!==undefined){closePicker();return;}
+  if(d.pkact!==undefined){pickAction(d.pkact);return;}
+  if(d.edit){startEdit(d.edit);return;}
   if(d.del){
     var ev=S.events.filter(function(v){return v.id===d.del;})[0];
     if(ev&&ev.pairId)S.events=S.events.filter(function(v){return v.pairId!==ev.pairId;});
