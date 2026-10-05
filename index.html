@@ -149,15 +149,22 @@ tr.riv td.pt{color:var(--riv)}
 .leg{font-size:.7rem;color:var(--muted)}
 .ex{display:flex;gap:8px}
 .ex .tb{flex:1;padding:12px;font-size:.85rem}
-.tlist{flex-shrink:0;background:var(--card);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.iconbtn{position:relative;display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;border:1px solid var(--line);border-radius:9px;background:var(--card);color:var(--text);font-size:1rem;cursor:pointer;touch-action:manipulation}
+.iconbtn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.action-tip{position:fixed;z-index:100;max-width:calc(100vw - 16px);padding:6px 9px;border-radius:7px;background:var(--text);color:var(--bg);font-size:.72rem;font-weight:600;line-height:1.2;text-align:center;white-space:normal;pointer-events:none;box-shadow:0 2px 8px rgba(0,0,0,.2)}
+.iconbtn:disabled{opacity:.4;cursor:default}
+.ex.icon-actions{align-items:center;gap:10px}
+.ex.icon-actions .iconbtn{flex:0 0 44px}
+.tlist{flex-shrink:0;background:var(--card);border:1px solid var(--line);border-radius:10px}
 .trow{display:flex;flex-direction:column;gap:8px;padding:11px 8px;border-bottom:1px solid var(--line)}
 .trow:last-child{border-bottom:none}
 .trow .tname{font-weight:700;font-size:.92rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .trow .tname small{display:block;font-weight:500;color:var(--accent);font-size:.65rem}
-.trow .tbtns{display:flex;gap:6px}
+.trow .tbtns{display:flex;gap:6px;flex-wrap:wrap}
 .trow .tbtns button{flex:1;border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:9px;padding:11px 4px;font-size:.82rem;font-weight:700;cursor:pointer}
-.trow .tbtns button.dg{color:var(--danger);flex:0 0 52px}
-.trow .tbtns button.load{background:var(--accent);color:#fff;border-color:var(--accent)}
+.trow .tbtns .iconbtn{flex:0 0 44px;padding:0;font-size:.95rem}
+.trow .tbtns .iconbtn.dg{color:var(--danger)}
+.trow .tbtns .iconbtn.load{background:var(--accent);color:#fff;border-color:var(--accent)}
 .tnameinput{font:inherit;font-weight:700;font-size:1rem;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--text);width:100%}
 .namefield{display:flex;flex-direction:column;gap:4px;font-size:.82rem;font-weight:600}
 </style>
@@ -431,12 +438,16 @@ function teamsView(){
   if(S.teams.length){
     h+='<div class="tlist">'+S.teams.map(function(t){
       return '<div class="trow"><span class="tname">'+esc(t.name)+(S.activeTeam===t.id?'<small>✓ En uso ahora</small>':'')+'</span>'
-        +'<div class="tbtns"><button data-editteam="'+t.id+'">✎ Editar</button>'
-        +'<button class="load" data-loadteam="'+t.id+'">▶ Cargar</button>'
-        +'<button class="dg" data-delteam="'+t.id+'">✕</button></div></div>';
+        +'<div class="tbtns"><button class="iconbtn" data-editteam="'+t.id+'" data-tip="Editar equipo" aria-label="Editar equipo"><i class="fa-solid fa-pen-to-square" aria-hidden="true"></i></button>'
+        +'<button class="iconbtn load" data-loadteam="'+t.id+'" data-tip="Cargar equipo" aria-label="Cargar equipo"><i class="fa-solid fa-play" aria-hidden="true"></i></button>'
+        +'<button class="iconbtn" data-exportteam="'+t.id+'" data-tip="Exportar equipo" aria-label="Exportar equipo"><i class="fa-solid fa-download" aria-hidden="true"></i></button>'
+        +'<button class="iconbtn dg" data-delteam="'+t.id+'" data-tip="Eliminar equipo" aria-label="Eliminar equipo"><i class="fa-solid fa-trash" aria-hidden="true"></i></button></div></div>';
     }).join("")+'</div>';
   }else h+='<div class="leg">Aún no hay equipos guardados. Crea un equipo o guarda la plantilla actual.</div>';
-  h+='<div class="ex"><button class="tb" data-x="newteam">+ Nuevo equipo</button><button class="tb" data-x="saveteam">💾 Guardar plantilla actual</button></div>';
+  h+='<div class="ex icon-actions"><button class="iconbtn" data-x="newteam" data-tip="Nuevo equipo" aria-label="Nuevo equipo"><i class="fa-solid fa-plus" aria-hidden="true"></i></button>'
+    +'<button class="iconbtn" data-x="saveteam" data-tip="Guardar como" aria-label="Guardar como"><i class="fa-solid fa-floppy-disk" aria-hidden="true"></i></button>'
+    +'<button class="iconbtn" data-x="importteams" data-tip="Importar equipo" aria-label="Importar equipo"><i class="fa-solid fa-upload" aria-hidden="true"></i></button><input id="teamsfile" type="file" accept=".json,application/json" style="display:none"></div>';
+  h+='<div class="leg">Exporta cada equipo desde su fila o importa una plantilla JSON para añadirla a tus equipos guardados.</div>';
   h+='<div class="sec">Jugadores del partido actual (dorsal o inicial, y nombre)</div>';
   h+='<div class="leg">'+(S.activeTeam?'Cargados desde «'+esc((findTeam(S.activeTeam)||{}).name||"")+'»':'Plantilla sin guardar')+'</div>';
   S.players.forEach(function(p){h+='<div class="er"><input class="no" data-f="num" data-id="'+p.id+'" value="'+esc(p.num)+'" maxlength="3" placeholder="Nº"><input class="nm" data-f="name" data-id="'+p.id+'" value="'+esc(p.name)+'" maxlength="20" placeholder="Nombre (opcional)"><button class="del" data-delp="'+p.id+'" aria-label="Eliminar">✕</button></div>';});
@@ -539,8 +550,92 @@ function exportCsv(){
   var csv="\uFEFF"+lines.map(function(r){return r.map(csvq).join(";");}).join("\r\n")+"\r\n";
   saveFile("estadisticas-baloncesto-"+today().iso+".csv",csv,"text/csv;charset=utf-8");
 }
+function exportTeam(teamId){
+  var team=findTeam(teamId);if(!team)return;
+  var data={format:"basket-stats-teams",version:1,team:{
+    name:team.name,players:team.players.map(function(p){return {num:p.num,name:p.name};})
+  }};
+  var filename=team.name.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"")||"equipo";
+  return saveFile("plantilla-"+filename+"-"+today().iso+".json",JSON.stringify(data,null,2),"application/json;charset=utf-8");
+}
+function importTeams(file){
+  return file.text().then(function(text){
+    var data;
+    try{data=JSON.parse(text);}catch(e){alert("El archivo no contiene un JSON válido.");return;}
+    if(!data||data.format!=="basket-stats-teams"||data.version!==1){
+      alert("El archivo no tiene un formato de plantillas compatible.");
+      return;
+    }
+    var teams=Array.isArray(data.teams)?data.teams:(data.team?[data.team]:null);
+    if(!teams){
+      alert("El archivo no tiene un formato de plantilla compatible.");
+      return;
+    }
+    var imported=[];
+    for(var i=0;i<teams.length;i++){
+      var team=teams[i];
+      if(!team||typeof team.name!=="string"||!team.name.trim()||!Array.isArray(team.players)){
+        alert("El equipo "+(i+1)+" no es válido. No se ha importado ningún equipo.");
+        return;
+      }
+      var players=[];
+      for(var j=0;j<team.players.length;j++){
+        var player=team.players[j];
+        if(!player||typeof player.num!=="string"||typeof player.name!=="string"){
+          alert("El jugador "+(j+1)+" del equipo «"+team.name+"» no es válido. No se ha importado ningún equipo.");
+          return;
+        }
+        players.push({id:uid(),num:player.num,name:player.name});
+      }
+      imported.push({id:uid(),name:team.name.trim(),players:players});
+    }
+    if(!imported.length){alert("El archivo no contiene equipos para importar.");return;}
+    var question=imported.length===1?"Se añadirá el equipo seleccionado a las plantillas guardadas.":"Se añadirán "+imported.length+" equipos a las plantillas guardadas.";
+    if(!confirm(question+" Las plantillas existentes no se modificarán. ¿Continuar?"))return;
+    S.teams=S.teams.concat(imported);save();render();
+    alert("Se ha"+(imported.length===1?" importado 1 equipo.":"n importado "+imported.length+" equipos."));
+  }).catch(function(){alert("No se pudo leer el archivo seleccionado.");});
+}
 
-document.getElementById("app").addEventListener("click",function(e){
+var app=document.getElementById("app"),tooltipNode=null;
+function showActionTip(button){
+  if(!button||!button.dataset.tip)return;
+  if(!tooltipNode){
+    tooltipNode=document.createElement("div");
+    tooltipNode.className="action-tip";
+    tooltipNode.setAttribute("role","tooltip");
+    document.body.appendChild(tooltipNode);
+  }
+  tooltipNode.textContent=button.dataset.tip;
+  tooltipNode.style.display="block";
+  var r=button.getBoundingClientRect(),t=tooltipNode.getBoundingClientRect();
+  var left=r.left+(r.width-t.width)/2;
+  left=Math.max(8,Math.min(left,window.innerWidth-t.width-8));
+  var top=r.top-t.height-7;
+  if(top<8)top=r.bottom+7;
+  top=Math.max(8,Math.min(top,window.innerHeight-t.height-8));
+  tooltipNode.style.left=left+"px";
+  tooltipNode.style.top=top+"px";
+  button.setAttribute("aria-describedby","action-tip");
+  tooltipNode.id="action-tip";
+}
+function hideActionTip(button){
+  if(tooltipNode)tooltipNode.style.display="none";
+  if(button)button.removeAttribute("aria-describedby");
+}
+app.addEventListener("pointerover",function(e){
+  var button=e.target.closest(".iconbtn");
+  if(button)showActionTip(button);
+});
+app.addEventListener("pointerout",function(e){
+  var button=e.target.closest(".iconbtn");
+  if(button&&(!e.relatedTarget||!button.contains(e.relatedTarget)))hideActionTip(button);
+});
+app.addEventListener("focusin",function(e){showActionTip(e.target.closest(".iconbtn"));});
+app.addEventListener("focusout",function(e){hideActionTip(e.target.closest(".iconbtn"));});
+window.addEventListener("scroll",function(){hideActionTip();},true);
+window.addEventListener("resize",function(){hideActionTip();});
+app.addEventListener("click",function(e){
   if(e.target&&e.target.classList&&e.target.classList.contains("pkoverlay")){closePicker();return;}
   var b=e.target.closest("button");if(!b)return;
   var d=b.dataset;
@@ -555,6 +650,8 @@ document.getElementById("app").addEventListener("click",function(e){
   if(d.pkcancel!==undefined){closePicker();return;}
   if(d.pkact!==undefined){pickAction(d.pkact);return;}
   if(d.edit){startEdit(d.edit);return;}
+  if(d.exportteam){exportTeam(d.exportteam);return;}
+  if(d.x==="importteams"){document.getElementById("teamsfile").click();return;}
   if(d.del){
     var ev=S.events.filter(function(v){return v.id===d.del;})[0];
     if(ev&&ev.pairId)S.events.forEach(function(v){if(v.id!==ev.id&&v.pairId===ev.pairId)delete v.pairId;});
@@ -628,6 +725,11 @@ document.getElementById("app").addEventListener("click",function(e){
 });
 document.getElementById("app").addEventListener("change",function(e){
   var t=e.target;
+  if(t.id==="teamsfile"){
+    var file=t.files&&t.files[0];t.value="";
+    if(file)importTeams(file);
+    return;
+  }
   if(t.dataset.grp){S.enabled[t.dataset.grp]=t.checked?1:0;save();return;}
   if(t.id==="home"){S.home=t.checked;save();return;}
   if(t.id==="nper"){
