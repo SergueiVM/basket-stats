@@ -379,7 +379,11 @@ function battery(n,cls,max){
   return '<span class="'+c+'">'+Array.from({length:max},function(_,i){return '<i class="'+(i<n?"on"+(n>=max?" over":""):"")+'"></i>';}).join("")+'</span>';
 }
 function selectablePlayers(){return sortedPlayers().filter(function(p){return foulsOf(p.id)<5;});}
-function playerActions(){return orderedActions(ACT.filter(function(a){return ORDERABLE_ACTIONS.some(function(g){return g.id===a.grp;})&&S.enabled[a.grp];}));}
+function playerActions(){
+  var general=ACT.filter(function(a){return ORDERABLE_ACTIONS.some(function(g){return g.id===a.grp;})&&S.enabled[a.grp];});
+  var shots=ACT.filter(function(a){return (a.k==="m"||a.k==="f")&&S.enabled[a.grp];});
+  return orderedActions(general).concat(shots);
+}
 function applyLoaded(d){
   S.players=normalizePlayers(d.players||[]);S.events=d.events||[];
   S.actionColors=normalizeActionColors(d.actionColors);
