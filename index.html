@@ -123,6 +123,7 @@ h1{font-size:1rem;margin:0}
 .p{height:76px;border:1px solid var(--line);border-radius:13px;background:var(--card);color:var(--text);display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:800;font-size:1.4rem;line-height:1;cursor:pointer;touch-action:manipulation;padding:0}
 .p small{font-size:.66rem;font-weight:500;color:var(--muted);max-width:100%;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;white-space:normal;line-height:1.1;margin-top:3px}
 .p.ro small,.pl.pk .p small{color:var(--accent);font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.02em}
+.p.ro small{color:var(--action-text)}
 .p small.alias{font-size:.56rem;letter-spacing:0;white-space:nowrap;overflow-wrap:normal;text-overflow:clip}
 .p.rdy{border:2px solid var(--accent)}
 .pl.pk .p.selected{border:3px solid var(--accent);background:var(--btn)}
@@ -661,7 +662,7 @@ function exportCsv(){
 }
 function exportMatch(){
   var data={format:"basket-stats-match",version:1,match:{
-    players:S.players,events:S.events,
+    players:S.players.map(function(p){return {id:p.id,num:p.num,name:p.name,alias:playerAlias(p)};}),events:S.events,
     enabled:S.enabled,periods:S.periods,period:S.period,home:S.home,
     clubName:S.clubName,opponentName:S.opponentName,playerActionMode:S.playerActionMode
   }};
@@ -675,7 +676,7 @@ function validMatchData(data){
     if(!Array.isArray(players))return false;
     var ids={};
     return players.every(function(p){
-      if(!p||!validId(p.id)||typeof p.num!=="string"||typeof p.name!=="string"||(p.alias!==undefined&&(typeof p.alias!=="string"||p.alias.length>MAX_ALIAS_LENGTH))||ids[p.id])return false;
+      if(!p||!validId(p.id)||typeof p.num!=="string"||typeof p.name!=="string"||(p.alias!==undefined&&typeof p.alias!=="string")||ids[p.id])return false;
       ids[p.id]=true;return true;
     });
   }
@@ -718,7 +719,10 @@ function importMatch(file){
 }
 function exportBackup(){
   var data={format:"basket-stats-backup",version:1,state:{
-    players:S.players,events:S.events,teams:S.teams,activeTeam:S.activeTeam,
+    players:S.players.map(function(p){return {id:p.id,num:p.num,name:p.name,alias:playerAlias(p)};}),
+    events:S.events,
+    teams:S.teams.map(function(t){return {id:t.id,name:t.name,players:t.players.map(function(p){return {id:p.id,num:p.num,name:p.name,alias:playerAlias(p)};})};}),
+    activeTeam:S.activeTeam,
     enabled:S.enabled,playerActionMode:S.playerActionMode,periods:S.periods,period:S.period,
     home:S.home,clubName:S.clubName,opponentName:S.opponentName,theme:S.theme
   }};
@@ -736,7 +740,7 @@ function validBackupData(data){
     teamIds[team.id]=true;
     var playerIds={};
     return team.players.every(function(player){
-      if(!player||!validId(player.id)||playerIds[player.id]||typeof player.num!=="string"||typeof player.name!=="string"||(player.alias!==undefined&&(typeof player.alias!=="string"||player.alias.length>MAX_ALIAS_LENGTH)))return false;
+      if(!player||!validId(player.id)||playerIds[player.id]||typeof player.num!=="string"||typeof player.name!=="string"||(player.alias!==undefined&&typeof player.alias!=="string"))return false;
       playerIds[player.id]=true;return true;
     });
   }))return false;
@@ -791,11 +795,11 @@ function importTeams(file){
       var players=[];
       for(var j=0;j<team.players.length;j++){
         var player=team.players[j];
-        if(!player||typeof player.num!=="string"||typeof player.name!=="string"||(player.alias!==undefined&&(typeof player.alias!=="string"||player.alias.length>MAX_ALIAS_LENGTH))){
+        if(!player||typeof player.num!=="string"||typeof player.name!=="string"||(player.alias!==undefined&&typeof player.alias!=="string")){
           alert("El jugador "+(j+1)+" del equipo «"+team.name+"» no es válido. No se ha importado ningún equipo.");
           return;
         }
-        players.push({id:uid(),num:player.num,name:player.name,alias:player.alias||""});
+        players.push({id:uid(),num:player.num,name:player.name,alias:typeof player.alias==="string"?player.alias.slice(0,MAX_ALIAS_LENGTH):""});
       }
       imported.push({id:uid(),name:team.name.trim(),players:players});
     }
