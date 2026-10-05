@@ -331,6 +331,9 @@ function finalizeAction(id,side,p){
   if(id==="rob"){
     var pairId=uid(),oppSide=side==="us"?"rival":"us";
     S.events.push({id:uid(),side:side,p:p,a:"rob",q:S.period,pairId:pairId});
+    if(!S.enabled.per){
+      save();flash("✔ "+a.l+" · "+whoLbl(side,p));return;
+    }
     if(oppSide==="rival"){
       S.events.push({id:uid(),side:"rival",p:null,a:"per",q:S.period,pairId:pairId});
       save();flash("✔ "+a.l+" · "+whoLbl(side,p)+" · Pérdida automática al rival");
