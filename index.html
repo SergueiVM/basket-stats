@@ -291,7 +291,6 @@ function normalizePlayers(players){
     return sortPlayersList(list);
   }
   list=list.slice(0,DEFAULT_PLAYERS).map(function(p,i){return {id:p&&p.id?String(p.id):uid(),num:(p&&p.num!==undefined&&p.num!==null&&String(p.num).trim()!=="")?String(p.num):String(i+1),name:p&&p.name!==undefined?String(p.name):"",alias:p&&typeof p.alias==="string"?p.alias.slice(0,MAX_ALIAS_LENGTH):""};});
-  while(list.length<DEFAULT_PLAYERS){list.push({id:uid(),num:String(list.length+1),name:"",alias:""});}
   return sortPlayersList(list);
 }
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
