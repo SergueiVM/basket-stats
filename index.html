@@ -32,6 +32,10 @@ h1{font-size:1rem;margin:0}
 .matchhead h1{font-size:.85rem;white-space:nowrap}
 .tb.pri{background:var(--accent);color:#fff;border-color:var(--accent)}
 .tb.dg{color:var(--danger)}
+.period-toggles{display:flex;flex-wrap:wrap;gap:8px}
+.period-toggle{min-width:48px;min-height:40px;padding:7px 12px;border:1px solid var(--line);border-radius:9px;background:var(--card);color:var(--text);font-size:.85rem;font-weight:800;cursor:pointer}
+.period-toggle.on{border-color:var(--accent);background:var(--accent);color:#fff}
+.period-toggle:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .perwrap{flex-shrink:0;margin:2px 8px 8px;padding:6px;background:var(--bg);border:1px solid var(--line);border-radius:10px}
 .per{display:flex;gap:8px;overflow-x:auto}
 .per button{flex:0 0 auto;min-width:50px;height:44px;border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:9px;font-weight:800;font-size:.9rem;cursor:pointer;padding:0 12px}
@@ -188,7 +192,7 @@ var ACT=[
 ];
 var GROUPS=[{id:"fal",l:"Falta"},{id:"per",l:"Pérdida"},{id:"rob",l:"Robo"},{id:"reb",l:"Rebote"},{id:"lib",l:"Tiro libre"},{id:"d2",l:"Tiro de 2"},{id:"t3",l:"Tiro de 3"}];
 function act(id){return ACT.filter(function(a){return a.id===id;})[0];}
-var S={players:[],events:[],teams:[],activeTeam:null,editTeamId:null,enabled:{fal:1,per:1,rob:1,reb:1,lib:1,d2:1,t3:1},periods:4,period:1,home:true,clubName:"Nosotros",opponentName:"Rival",theme:"system",picker:null,view:"main",msg:"",warn:false};
+var S={players:[],events:[],teams:[],activeTeam:null,editTeamId:null,enabled:{fal:1,per:1,rob:1,reb:1,lib:1,d2:1,t3:1},periods:4,period:1,summaryPeriods:null,home:true,clubName:"Nosotros",opponentName:"Rival",theme:"system",picker:null,view:"main",msg:"",warn:false};
 var seq=0;
 function uid(){seq++;return Date.now().toString(36)+seq;}
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
@@ -235,6 +239,7 @@ function selectablePlayers(){return sortedPlayers().filter(function(p){return fo
 function applyLoaded(d){
   S.players=d.players||[];S.events=d.events||[];
   S.periods=d.periods||4;S.period=Math.min(d.period||1,S.periods);
+  S.summaryPeriods=null;
   S.home=d.home===undefined?true:!!d.home;
   S.clubName=d.clubName===undefined?"Nosotros":String(d.clubName);
   S.opponentName=d.opponentName===undefined?"Rival":String(d.opponentName);
@@ -507,22 +512,39 @@ function computeTable(evs){
 function statTable(evs,title){
   var rows=computeTable(evs);
   var body=rows.map(function(r){return '<tr class="'+r.cls+'"><td>'+esc(r.name)+'</td><td class="pt">'+r.pt+'</td><td>'+r.c.fal+'</td><td>'+r.c.per+'</td><td>'+r.c.rob+'</td><td class="rebcell">'+r.c.reb+'<small>'+r.c.rebOff+'/'+r.c.rebDef+'</small></td><td>'+r.c.l1+'/'+(r.c.l1+r.c.l0)+'</td><td>'+r.c.d1+'/'+(r.c.d1+r.c.d0)+'</td><td>'+r.c.t1+'/'+(r.c.t1+r.c.t0)+'</td></tr>';}).join("");
-  return '<div class="sec">'+title+'</div><table><colgroup><col style="width:24%"><col style="width:8%"><col style="width:8%"><col style="width:9%"><col style="width:8%"><col style="width:8.5%"><col style="width:11.5%"><col style="width:11.5%"><col style="width:11.5%"></colgroup><tr><th>Equipo/jugador</th><th>Pts</th><th>Fal</th><th>Pér</th><th>Rob</th><th>Reb<br><span style="font-size:.55rem">O/D</span></th><th>TL</th><th>T2</th><th>T3</th></tr>'+body+'</table><div class="leg">Rebotes: total arriba · ofensivos/defensivos abajo</div>';
+  return (title?'<div class="sec">'+title+'</div>':"")+'<table><colgroup><col style="width:24%"><col style="width:8%"><col style="width:8%"><col style="width:9%"><col style="width:8%"><col style="width:8.5%"><col style="width:11.5%"><col style="width:11.5%"><col style="width:11.5%"></colgroup><tr><th>Equipo/jugador</th><th>Pts</th><th>Fal</th><th>Pér</th><th>Rob</th><th>Reb<br><span style="font-size:.55rem">O/D</span></th><th>TL</th><th>T2</th><th>T3</th></tr>'+body+'</table><div class="leg">Rebotes: total arriba · ofensivos/defensivos abajo</div>';
 }
 function sumView(){
   var d=new Date(),h='<header><h1>Resumen</h1><div class="bar"><button class="tb" data-x="back">← Volver</button><button class="tb dg" data-x="new">Nuevo</button></div></header><div class="pg">';
   h+='<div class="leg">'+d.toLocaleDateString("es-ES")+' · '+S.events.length+' acciones registradas</div>';
+  var selected=selectedSummaryPeriods(),qLabel=S.periods<=4?"C":"T";
   h+='<div class="ex icon-actions"><button class="iconbtn" id="exportmatch" data-tip="Exportar partido" aria-label="Exportar partido"><i class="fa-solid fa-file-export" aria-hidden="true"></i></button>'
     +'<button class="iconbtn" data-x="importmatch" data-tip="Importar partido" aria-label="Importar partido"><i class="fa-solid fa-file-import" aria-hidden="true"></i></button>'
     +'<input id="matchfile" type="file" accept=".json,application/json" style="display:none"><button class="tb" id="xcsv"><i class="fa-solid fa-file-csv" aria-hidden="true"></i> Exportar CSV</button></div>';
-  h+=statTable(S.events,"Total del partido");
-  var qLabel=S.periods<=4?"Cuarto ":"Tiempo ";
-  for(var n=1;n<=S.periods;n++){
-    var evs=S.events.filter(function(e){return (e.q||1)===n;});
-    if(evs.length)h+=statTable(evs,qLabel+n);
-  }
+  h+='<div class="period-toggles" aria-label="Cuartos o tiempos incluidos">'+Array.from({length:S.periods},function(_,i){
+    var n=i+1,on=selected.indexOf(n)!==-1;
+    return '<button type="button" class="period-toggle'+(on?" on":"")+'" data-summary-period="'+n+'" aria-pressed="'+on+'">'+qLabel+n+'</button>';
+  }).join("")+'</div>';
+  var summary=summaryData();
+  h+=statTable(summary.events,"");
   h+='<div class="leg">TL, T2, T3 = aciertos/intentos · Pts = puntos (1, 2 y 3 por acierto) · Equipo = acciones sin jugador asignado</div></div>';
   return h;
+}
+
+function selectedSummaryPeriods(){
+  if(S.summaryPeriods===null)return Array.from({length:S.periods},function(_,i){return i+1;});
+  return S.summaryPeriods.filter(function(n){return n>=1&&n<=S.periods;});
+}
+function summaryData(){
+  var selected=selectedSummaryPeriods(),all=selected.length===S.periods;
+  var label=S.periods<=4?"Cuarto ":"Tiempo ";
+  var title="Total del partido";
+  if(!all){
+    if(!selected.length)title="Sin periodos seleccionados";
+    else if(selected.length===1)title=label+(S.periods<=4?"C":"T")+selected[0];
+    else title=(S.periods<=4?"Cuartos ":"Tiempos ")+selected.map(function(n){return (S.periods<=4?"C":"T")+n;}).join(" + ");
+  }
+  return {title:title,events:S.events.filter(function(e){return selected.indexOf(e.q||1)!==-1;})};
 }
 
 function today(){var d=new Date();function z(n){return (n<10?"0":"")+n;}return {iso:d.getFullYear()+"-"+z(d.getMonth()+1)+"-"+z(d.getDate())};}
@@ -540,15 +562,8 @@ async function saveFile(name,data,mime){
 }
 function exportCsv(){
   var head=["Equipo/jugador","Puntos","Faltas","Pérdidas","Robos","Rebotes totales","Rebotes ofensivos","Rebotes defensivos","TL acierto","TL fallo","T2 acierto","T2 fallo","T3 acierto","T3 fallo"];
-  var sections=[{title:"Total del partido",evs:S.events}];
-  var qLabel=S.periods<=4?"Cuarto ":"Tiempo ";
-  for(var n=1;n<=S.periods;n++){var evs=S.events.filter(function(e){return (e.q||1)===n;});if(evs.length)sections.push({title:qLabel+n,evs:evs});}
-  var lines=[];
-  sections.forEach(function(sec,i){
-    if(i>0)lines.push([""]);
-    lines.push([sec.title]);lines.push(head);
-    computeTable(sec.evs).forEach(function(r){lines.push([r.name,r.pt,r.c.fal,r.c.per,r.c.rob,r.c.reb,r.c.rebOff,r.c.rebDef,r.c.l1,r.c.l0,r.c.d1,r.c.d0,r.c.t1,r.c.t0]);});
-  });
+  var summary=summaryData(),lines=[head];
+  computeTable(summary.events).forEach(function(r){lines.push([r.name,r.pt,r.c.fal,r.c.per,r.c.rob,r.c.reb,r.c.rebOff,r.c.rebDef,r.c.l1,r.c.l0,r.c.d1,r.c.d0,r.c.t1,r.c.t0]);});
   var csv="\uFEFF"+lines.map(function(r){return r.map(csvq).join(";");}).join("\r\n")+"\r\n";
   saveFile("estadisticas-baloncesto-"+today().iso+".csv",csv,"text/csv;charset=utf-8");
 }
@@ -702,6 +717,11 @@ app.addEventListener("click",function(e){
     S.events.push({id:uid(),side:d.timeout,p:null,a:"tm",q:S.period});
     save();flash("✔ Tiempo muerto · "+(d.timeout==="us"?S.clubName.trim()||"Nosotros":S.opponentName.trim()||"Rival"));return;
   }
+  if(d.summaryPeriod){
+    var n=+d.summaryPeriod,selected=selectedSummaryPeriods();
+    S.summaryPeriods=selected.indexOf(n)===-1?selected.concat([n]):selected.filter(function(period){return period!==n;});
+    render();return;
+  }
   if(d.a){startAction(d.a);return;}
   if(d.per){S.period=+d.per;save();render();return;}
   if(d.pks!==undefined){pickTarget(d.pks,d.pkp||null);return;}
@@ -734,7 +754,7 @@ app.addEventListener("click",function(e){
     var lt=findTeam(d.loadteam);if(!lt)return;
     if(!confirm('¿Cargar el equipo "'+lt.name+'"? Sustituye a los jugadores actuales y empieza un partido nuevo (se borra el registro).'))return;
     S.players=lt.players.map(function(p){return {id:uid(),num:p.num,name:p.name};});
-    S.events=[];S.period=1;S.activeTeam=lt.id;S.view="main";save();render();return;
+    S.events=[];S.period=1;S.summaryPeriods=null;S.activeTeam=lt.id;S.view="main";save();render();return;
   }
   if(d.delteam){
     var dt=findTeam(d.delteam);if(!dt)return;
@@ -765,7 +785,7 @@ app.addEventListener("click",function(e){
   else if(x==="add"){S.players.push({id:uid(),num:"",name:""});save();}
   else if(x==="blank"){
     if(!confirm("¿Sustituir los jugadores actuales por una plantilla en blanco (10 dorsales sin nombre)? Se borrará el registro del partido."))return;
-    S.players=blankRoster();S.events=[];S.period=1;S.activeTeam=null;save();
+    S.players=blankRoster();S.events=[];S.period=1;S.summaryPeriods=null;S.activeTeam=null;save();
   }
   else if(x==="newteam"){
     var nn=prompt("Nombre del nuevo equipo:");if(nn===null)return;nn=nn.trim();if(!nn)return;
@@ -779,7 +799,7 @@ app.addEventListener("click",function(e){
   }
   else if(x==="new"){
     if(!confirm("¿Empezar un nuevo partido? Se borrará todo el registro (jugadores y ajustes se mantienen)."))return;
-    S.events=[];S.period=1;S.view="main";save();
+    S.events=[];S.period=1;S.summaryPeriods=null;S.view="main";save();
   }
   render();
 });
@@ -799,7 +819,7 @@ document.getElementById("app").addEventListener("change",function(e){
   if(t.id==="home"){S.home=t.checked;save();return;}
   if(t.id==="nper"){
     var v=Math.max(1,Math.min(8,parseInt(t.value,10)||4));
-    S.periods=v;if(S.period>v)S.period=v;save();
+    S.periods=v;if(S.period>v)S.period=v;S.summaryPeriods=null;save();
   }
 });
 document.getElementById("app").addEventListener("input",function(e){
