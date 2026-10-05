@@ -498,6 +498,8 @@ function setView(){
   h+='<div class="sec">Apariencia</div><div class="seg">'+["system","light","dark"].map(function(t){return '<button class="'+(S.theme===t?"on":"")+'" data-theme="'+t+'">'+(t==="system"?"Sistema":t==="light"?"Claro":"Oscuro")+'</button>';}).join("")+'</div>';
   h+='<div class="sec">Acciones a registrar</div>';
   GROUPS.forEach(function(g){h+='<label class="ck"><input type="checkbox" data-grp="'+g.id+'"'+(S.enabled[g.id]?" checked":"")+'>'+g.l+'</label>';});
+  h+='<div class="sec">Transferir todo</div><div class="leg">Guarda o restaura el partido actual, los jugadores, los equipos guardados y los ajustes para cambiar de dispositivo.</div>';
+  h+='<div class="ex"><button class="tb" data-x="exportbackup"><i class="fa-solid fa-download" aria-hidden="true"></i> Exportar todo</button> <button class="tb" data-x="importbackup"><i class="fa-solid fa-upload" aria-hidden="true"></i> Importar todo</button><input id="backupfile" type="file" accept=".json,application/json" style="display:none"></div>';
   h+='<button class="tb dg" data-x="new" style="padding:12px;margin-top:4px">Nuevo partido (borrar registro)</button>';
   return h+'</div>';
 }
@@ -689,6 +691,50 @@ function importMatch(file){
     alert("Partido importado correctamente.");
   },function(){alert("No se pudo leer el archivo seleccionado.");});
 }
+function exportBackup(){
+  var data={format:"basket-stats-backup",version:1,state:{
+    players:S.players,events:S.events,teams:S.teams,activeTeam:S.activeTeam,
+    enabled:S.enabled,playerActionMode:S.playerActionMode,periods:S.periods,period:S.period,
+    home:S.home,clubName:S.clubName,opponentName:S.opponentName,theme:S.theme
+  }};
+  return saveFile("respaldo-baloncesto-"+today().iso+".json",JSON.stringify(data,null,2),"application/json;charset=utf-8");
+}
+function validBackupData(data){
+  if(!data||data.format!=="basket-stats-backup"||data.version!==1||!data.state)return false;
+  var state=data.state;
+  if(!validMatchData({format:"basket-stats-match",version:1,match:state})||
+    !Array.isArray(state.teams)||["system","light","dark"].indexOf(state.theme)===-1)return false;
+  function validId(id){return typeof id==="string"&&/^[A-Za-z0-9_-]+$/.test(id);}
+  var teamIds={};
+  if(!state.teams.every(function(team){
+    if(!team||!validId(team.id)||teamIds[team.id]||typeof team.name!=="string"||!Array.isArray(team.players))return false;
+    teamIds[team.id]=true;
+    var playerIds={};
+    return team.players.every(function(player){
+      if(!player||!validId(player.id)||playerIds[player.id]||typeof player.num!=="string"||typeof player.name!=="string")return false;
+      playerIds[player.id]=true;return true;
+    });
+  }))return false;
+  return state.activeTeam===null||state.activeTeam===undefined||teamIds[state.activeTeam]===true;
+}
+function importBackup(file){
+  return file.text().then(function(text){
+    var data;
+    try{data=JSON.parse(text);}catch(e){alert("El archivo no contiene un JSON válido.");return;}
+    if(!validBackupData(data)){
+      alert("El archivo no contiene un respaldo completo compatible o tiene datos no válidos.");
+      return;
+    }
+    if(!confirm("El respaldo va a sustituir el partido, los jugadores, todos los equipos guardados y los ajustes de este dispositivo. Los datos actuales harán las maletas y se irán al banquillo. ¿Continuar?"))return;
+    if(!confirm("Última llamada: al aceptar, se borrará todo lo actual y se pondrá el respaldo en su lugar. ¿Seguro que quieres hacer el cambio?"))return;
+    applyLoaded(data.state);
+    S.theme=data.state.theme;
+    setTheme(S.theme);
+    S.view="main";S.picker=null;S.editTeamId=null;S.summaryPeriods=null;
+    save();render();
+    alert("Respaldo importado correctamente.");
+  },function(){alert("No se pudo leer el archivo seleccionado.");});
+}
 function exportTeam(teamId){
   var team=findTeam(teamId);if(!team)return;
   var data={format:"basket-stats-teams",version:1,team:{
@@ -798,6 +844,8 @@ app.addEventListener("click",function(e){
   if(d.exportteam){exportTeam(d.exportteam);return;}
   if(d.x==="importteams"){document.getElementById("teamsfile").click();return;}
   if(d.x==="importmatch"){document.getElementById("matchfile").click();return;}
+  if(d.x==="exportbackup"){exportBackup();return;}
+  if(d.x==="importbackup"){document.getElementById("backupfile").click();return;}
   if(d.del){
     var ev=S.events.filter(function(v){return v.id===d.del;})[0];
     if(ev&&ev.pairId)S.events.forEach(function(v){if(v.id!==ev.id&&v.pairId===ev.pairId)delete v.pairId;});
@@ -880,6 +928,11 @@ document.getElementById("app").addEventListener("change",function(e){
   if(t.id==="matchfile"){
     var matchFile=t.files&&t.files[0];t.value="";
     if(matchFile)importMatch(matchFile);
+    return;
+  }
+  if(t.id==="backupfile"){
+    var backupFile=t.files&&t.files[0];t.value="";
+    if(backupFile)importBackup(backupFile);
     return;
   }
   if(t.dataset.grp){S.enabled[t.dataset.grp]=t.checked?1:0;save();return;}
