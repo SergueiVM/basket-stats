@@ -161,8 +161,23 @@ h1{font-size:1rem;margin:0}
 .teams.pk .tus.selected{box-shadow:0 0 0 3px var(--riv)}
 .teams.pk .triv.selected{box-shadow:0 0 0 3px var(--accent)}
 .teams button:active{filter:brightness(.85)}
-.logh{flex-shrink:0;font-size:.7rem;color:var(--muted);font-weight:700;text-transform:uppercase;padding:2px 12px}
+.logh{flex-shrink:0;display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:.7rem;color:var(--muted);font-weight:700;text-transform:uppercase;padding:2px 12px}
+.log-title{text-transform:none}
 .log{flex:1;min-height:110px;overflow:auto;margin:0 8px 8px;background:var(--card);border:1px solid var(--line);border-radius:10px}
+.log-screen{position:fixed;inset:0;z-index:20;display:flex;flex-direction:column;background:var(--bg);padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px)}
+.log-fullhead{flex-shrink:0;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 12px}
+.log-screen .log{min-height:0}
+.log-screen .ev{padding:11px 10px;font-size:.95rem}
+.log-screen .ev .n,.log-screen .ev .q{font-size:.75rem}
+.log-screen .ev .k{font-size:.82rem}
+.log-screen .ev .btns button{padding:8px 10px}
+.log-expand{flex:0 0 38px;min-width:38px;min-height:38px;border:none;font-size:.95rem}
+.period-wizard-options{display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:8px;padding:2px}
+.period-wizard-option{min-height:64px;border:1px solid var(--line);border-radius:12px;background:var(--bg);color:var(--text);font-size:1.05rem;font-weight:800;cursor:pointer}
+.period-wizard-option.selected{border-color:var(--accent);background:var(--accent);color:#fff;box-shadow:0 0 0 3px var(--bg),0 0 0 5px var(--accent)}
+.period-wizard-option:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.ev-period{position:sticky;top:0;z-index:1;display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--btn);color:var(--accent);font-size:.78rem;font-weight:800;letter-spacing:.04em;text-transform:uppercase;border-top:2px solid var(--accent);border-bottom:1px solid var(--line)}
+.ev-period:after{content:"";height:1px;flex:1;background:var(--line)}
 .empty{color:var(--muted);text-align:center;padding:20px;font-size:.85rem}
 .ev{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:7px 6px 7px 10px;border-bottom:1px solid var(--line);font-size:.85rem}
 .ev .info{display:flex;align-items:center;gap:6px;min-width:0;flex:1;overflow:hidden}
@@ -266,7 +281,7 @@ var COLOR_OPTIONS=[{id:"info",l:"Por defecto"},{id:"azul",l:"Azul"},{id:"celeste
 var LEGACY_COLOR_HEX={info:"#cff4fc",azul:"#dbeafe",celeste:"#cffafe",turquesa:"#ccfbf1",verde:"#dcfce7",lima:"#ecfccb",amarillo:"#fef3c7",naranja:"#ffedd5",coral:"#ffe4e1",rojo:"#fee2e2",rosa:"#fce7f3",morado:"#f3e8ff",lavanda:"#ede9fe",gris:"#e5e7eb",marron:"#f0e2d3"};
 function act(id){return ACT.filter(function(a){return a.id===id;})[0];}
 var DEFAULT_PLAYERS=12,MAX_ALIAS_LENGTH=8;
-var S={players:[],events:[],teams:[],activeTeam:null,editTeamId:null,enabled:{fal:1,per:1,rob:1,tap:1,reb:1,lib:1,d2:1,t3:1},actionOrder:ORDERABLE_ACTIONS.map(function(a){return a.id;}),actionColors:{},playerActionMode:true,periods:4,period:1,summaryPeriods:null,home:true,clubName:"Nosotros",opponentName:"Rival",theme:"system",picker:null,view:"main",msg:"",warn:false};
+var S={players:[],events:[],teams:[],activeTeam:null,editTeamId:null,enabled:{fal:1,per:1,rob:1,tap:1,reb:1,lib:1,d2:1,t3:1},actionOrder:ORDERABLE_ACTIONS.map(function(a){return a.id;}),actionColors:{},playerActionMode:true,periods:4,period:1,summaryPeriods:null,home:true,clubName:"Nosotros",opponentName:"Rival",theme:"system",picker:null,view:"main",logExpanded:false,msg:"",warn:false};
 var seq=0;
 function uid(){seq++;return Date.now().toString(36)+seq;}
 function normalizePlayers(players){
@@ -485,7 +500,12 @@ function renderPicker(){
   var o=S.picker;if(!o)return "";
   var h='<div class="pkoverlay"><div class="pksheet">';
   h+='<div class="pkhead"><span class="pktitle">'+(o.titleHtml||esc(o.title||""))+'</span><button data-pkcancel="1" aria-label="Cerrar">✕</button></div>';
-  if(o.foulTypes){
+  if(o.periodEdit){
+    h+='<div class="period-wizard-options">'+Array.from({length:o.periodCount},function(_,i){return i+1;}).map(function(period){
+      var label=(S.periods<=4?"C":"T")+period;
+      return '<button class="period-wizard-option'+(period===o.selectedPeriod?" selected":"")+'" type="button" data-pkperiod="'+period+'" aria-pressed="'+(period===o.selectedPeriod)+'">'+label+'</button>';
+    }).join("")+'</div>';
+  }else if(o.foulTypes){
     h+='<div class="pkfouls">'+o.foulTypes.map(function(type){
       return '<button type="button" data-pkfoul="'+type.id+'" aria-pressed="'+(type.id===o.selectedFoulType)+'"'+(type.id===o.selectedFoulType?' class="selected"':"")+'><strong>'+esc(type.label)+'</strong><small>'+esc(type.detail)+'</small></button>';
     }).join("")+'</div>';
@@ -537,6 +557,17 @@ function startPlayerAction(playerId){
 }
 function startEdit(evId){
   var ev=S.events.filter(function(v){return v.id===evId;})[0];if(!ev)return;
+  openPicker({
+    titleHtml:badge("Editar","n")+'<span class="pksub">Primero, elige el cuarto o tiempo</span>',
+    periodEdit:true,
+    periodCount:Math.max(S.periods,Math.min(8,Number(ev.q)||1)),
+    selectedPeriod:ev.q||1,
+    onContinue:function(period){
+      ev.q=period;save();openEditDetails(ev);
+    }
+  });
+}
+function openEditDetails(ev){
   if(ev.a==="tm"){
     openPicker({
       titleHtml:subTitle(act("tm")),
@@ -668,7 +699,8 @@ function finalizeAction(id,side,p){
 }
 function render(){
   var h="";
-  if(S.view==="set")h=setView();else if(S.view==="sum")h=sumView();else if(S.view==="teams")h=teamsView();else if(S.view==="team")h=teamView();else h=mainView();
+  if(S.view==="main"&&S.logExpanded)h=renderLog(true);
+  else if(S.view==="set")h=setView();else if(S.view==="sum")h=sumView();else if(S.view==="teams")h=teamsView();else if(S.view==="team")h=teamView();else h=mainView();
   h+=renderPicker();
   document.getElementById("app").innerHTML=h;
 }
@@ -705,14 +737,26 @@ function mainView(){
     if(playerActionsEnabled)return '<button type="button" class="p ro action-player" data-playeraction="'+p.id+'" aria-label="Registrar acción de '+esc(who(p))+'"'+(eliminated?' disabled title="Jugador descalificado"':'')+'>'+label+'</button>';
     return '<div class="p ro">'+label+'</div>';
   }).join("")+'</div>';
-  h+='<div class="logh">Registro ('+S.events.length+') · más reciente primero</div><div class="log">';
+  return h+renderLog(false);
+}
+function renderLog(fullscreen){
+  var h=fullscreen?'<div class="log-screen"><header class="log-fullhead"><h1>Registros ('+S.events.length+')</h1><button type="button" class="iconbtn log-expand" data-logtoggle="1" aria-label="Volver al partido" title="Volver al partido"><i class="fa-solid fa-compress" aria-hidden="true"></i></button></header><div class="log">':'<div class="logh"><span class="log-title">Registros ('+S.events.length+')</span><button type="button" class="iconbtn log-expand" data-logtoggle="1" aria-label="Ampliar registro a pantalla completa" title="Ampliar registro a pantalla completa"><i class="fa-solid fa-expand" aria-hidden="true"></i></button></div><div class="log">';
   if(!S.events.length)h+='<div class="empty">Aún no hay acciones registradas</div>';
-  var n=S.events.length;
-  S.events.slice().reverse().forEach(function(e,i){
+  var previousPeriod=null;
+  S.events.map(function(e,index){return {event:e,index:index};}).sort(function(a,b){
+    var periodB=Number(b.event.q)||1,periodA=Number(a.event.q)||1;
+    return periodB-periodA||b.index-a.index;
+  }).forEach(function(item){
+    var e=item.event;
+    var period=Number(e.q)||1;
+    if(period!==previousPeriod){
+      h+='<div class="ev-period">'+(S.periods<=4?"Cuarto ":"Tiempo ")+period+'</div>';
+      previousPeriod=period;
+    }
     var a=act(e.a);
-    h+='<div class="ev"><div class="info"><span class="n">'+(n-i)+'</span><span class="q">'+(S.periods<=4?"C":"T")+(e.q||1)+'</span><span class="k '+a.k+(a.k==="n"?" action-"+e.a+actionColorClass(e.a):"")+'">'+evLabel(e)+'</span><span class="w'+(e.side==="rival"?" riv":"")+'">'+esc(whoLbl(e.side,e.p))+'</span></div><div class="btns"><button class="editbtn" data-edit="'+e.id+'" aria-label="Editar">✎</button><button class="delbtn" data-del="'+e.id+'" aria-label="Borrar">✕</button></div></div>';
+    h+='<div class="ev"><div class="info"><span class="n">'+(item.index+1)+'</span><span class="q">'+(S.periods<=4?"C":"T")+(e.q||1)+'</span><span class="k '+a.k+(a.k==="n"?" action-"+e.a+actionColorClass(e.a):"")+'">'+evLabel(e)+'</span><span class="w'+(e.side==="rival"?" riv":"")+'">'+esc(whoLbl(e.side,e.p))+'</span></div><div class="btns"><button class="editbtn" data-edit="'+e.id+'" aria-label="Editar">✎</button><button class="delbtn" data-del="'+e.id+'" aria-label="Borrar">✕</button></div></div>';
   });
-  return h+'</div>';
+  return h+'</div>'+(fullscreen?'</div>':"");
 }
 
 function setView(){
@@ -1092,10 +1136,20 @@ app.addEventListener("click",function(e){
   if(d.orderAction){moveAction(d.orderAction,Number(d.orderDirection));return;}
   if(d.playeraction){startPlayerAction(d.playeraction);return;}
   if(d.per){S.period=+d.per;save();render();return;}
+  if(d.logtoggle){S.logExpanded=!S.logExpanded;render();return;}
   if(d.pks!==undefined){pickTarget(d.pks,d.pkp||null);return;}
   if(d.pkcancel!==undefined){closePicker();return;}
   if(d.pkact!==undefined){pickAction(d.pkact);return;}
   if(d.pkfoul!==undefined){pickFoulType(d.pkfoul);return;}
+  if(d.pkperiod!==undefined){
+    var selectedPeriod=Number(d.pkperiod);
+    if(S.picker&&S.picker.periodEdit&&selectedPeriod>=1&&selectedPeriod<=S.picker.periodCount){
+      var periodPicker=S.picker;
+      S.picker=null;
+      periodPicker.onContinue(selectedPeriod);
+    }
+    return;
+  }
   if(d.edit){startEdit(d.edit);return;}
   if(d.exportteam){exportTeam(d.exportteam);return;}
   if(d.x==="importteams"){document.getElementById("teamsfile").click();return;}
