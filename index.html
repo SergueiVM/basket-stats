@@ -521,7 +521,8 @@ function renderPicker(){
 }
 function startAction(id){
   var a=act(id);
-  openPicker({titleHtml:subTitle(a),teamRow:true,rival:true,extra:null,onPick:function(side,p){finalizeAction(id,side,p);}});
+  var titleHtml=id==="tap"?badge(a.cat,a.k,a.id)+'<span class="pksub">¿Quién realiza el tapón?</span>':subTitle(a);
+  openPicker({titleHtml:titleHtml,teamRow:true,rival:true,extra:null,onPick:function(side,p){finalizeAction(id,side,p);}});
 }
 function startPlayerAction(playerId){
   var player=pl(playerId);
@@ -592,12 +593,29 @@ function finalizeAction(id,side,p){
     save();
     openPicker({
       titleHtml:badge("Tapón","n","tap")+'<span class="pksub">¿Quién recupera el balón?</span>',
-      teamRow:true,rival:true,extra:"Sin pérdida",
+      players:false,teamRow:true,rival:true,extra:"Sin pérdida",
       onPick:function(recoverySide){
-        var turnover=recoverySide!==side;
-        if(turnover)S.events.push({id:uid(),side:recoverySide,p:null,a:"per",q:S.period,pairId:tapPairId});
+        var turnover=recoverySide===side;
+        var turnoverSide=recoverySide==="us"?"rival":"us";
+        if(turnover&&turnoverSide==="us"&&selectablePlayers().length){
+          save();
+          openPicker({
+            titleHtml:badge("Pérdida","n","per")+'<span class="pksub">¿Qué jugador recibió el tapón?</span>',
+            teamRow:false,extra:"Equipo",
+            onPick:function(lostSide,lostPlayer){
+              S.events.push({id:uid(),side:"us",p:lostPlayer,a:"per",q:S.period,pairId:tapPairId});
+              save();flash("✔ Tapón · "+whoLbl(side,p)+" · Pérdida de "+whoLbl("us",lostPlayer));
+            },
+            onCancel:function(){
+              S.events.push({id:uid(),side:"us",p:null,a:"per",q:S.period,pairId:tapPairId});
+              save();flash("✔ Tapón · "+whoLbl(side,p)+" · Pérdida de "+(S.clubName.trim()||"Nosotros"));
+            }
+          });
+          return;
+        }
+        if(turnover)S.events.push({id:uid(),side:turnoverSide,p:null,a:"per",q:S.period,pairId:tapPairId});
         save();
-        flash("✔ Tapón · "+whoLbl(side,p)+(turnover?" · Pérdida de "+(recoverySide==="us"?S.clubName.trim()||"Nosotros":S.opponentName.trim()||"Rival"):" · Recupera "+(recoverySide==="us"?S.clubName.trim()||"Nosotros":S.opponentName.trim()||"Rival")));
+        flash("✔ Tapón · "+whoLbl(side,p)+(turnover?" · Pérdida de "+(turnoverSide==="us"?S.clubName.trim()||"Nosotros":S.opponentName.trim()||"Rival"):" · Recupera "+(recoverySide==="us"?S.clubName.trim()||"Nosotros":S.opponentName.trim()||"Rival")));
       },
       onCancel:function(){}
     });
