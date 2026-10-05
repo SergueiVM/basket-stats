@@ -192,9 +192,19 @@ var ACT=[
 ];
 var GROUPS=[{id:"fal",l:"Falta"},{id:"per",l:"Pérdida"},{id:"rob",l:"Robo"},{id:"reb",l:"Rebote"},{id:"lib",l:"Tiro libre"},{id:"d2",l:"Tiro de 2"},{id:"t3",l:"Tiro de 3"}];
 function act(id){return ACT.filter(function(a){return a.id===id;})[0];}
+var DEFAULT_PLAYERS=12;
 var S={players:[],events:[],teams:[],activeTeam:null,editTeamId:null,enabled:{fal:1,per:1,rob:1,reb:1,lib:1,d2:1,t3:1},periods:4,period:1,summaryPeriods:null,home:true,clubName:"Nosotros",opponentName:"Rival",theme:"system",picker:null,view:"main",msg:"",warn:false};
 var seq=0;
 function uid(){seq++;return Date.now().toString(36)+seq;}
+function normalizePlayers(players){
+  var list=Array.isArray(players)?players.slice():[];
+  if(!list.length){
+    return Array.from({length:DEFAULT_PLAYERS},function(_,i){return {id:uid(),num:String(i+1),name:""};});
+  }
+  list=list.slice(0,DEFAULT_PLAYERS).map(function(p,i){return {id:p&&p.id?String(p.id):uid(),num:(p&&p.num!==undefined&&p.num!==null&&String(p.num).trim()!=="")?String(p.num):String(i+1),name:p&&p.name!==undefined?String(p.name):""};});
+  while(list.length<DEFAULT_PLAYERS){list.push({id:uid(),num:String(list.length+1),name:""});}
+  return list;
+}
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
 function lab(p){return p.num!==""?p.num:(p.name?p.name.charAt(0).toUpperCase():"?");}
 function who(p){return p?((p.num!==""?"#"+p.num:"")+(p.name?" "+p.name:"")||"?"):"(eliminado)";}
@@ -237,7 +247,7 @@ function battery(n,cls,max){
 }
 function selectablePlayers(){return sortedPlayers().filter(function(p){return foulsOf(p.id)<5;});}
 function applyLoaded(d){
-  S.players=d.players||[];S.events=d.events||[];
+  S.players=normalizePlayers(d.players||[]);S.events=d.events||[];
   S.periods=d.periods||4;S.period=Math.min(d.period||1,S.periods);
   S.summaryPeriods=null;
   S.home=d.home===undefined?true:!!d.home;
@@ -258,10 +268,10 @@ function load(){
       }
     }
   }catch(e){}
-  for(var i=1;i<=10;i++)S.players.push({id:uid(),num:String(i),name:""});
+  S.players=normalizePlayers([]);
 }
 function save(){try{localStorage.setItem(KEY,JSON.stringify({players:S.players,events:S.events,teams:S.teams,activeTeam:S.activeTeam,enabled:S.enabled,periods:S.periods,period:S.period,home:S.home,clubName:S.clubName,opponentName:S.opponentName}));}catch(e){}}
-function blankRoster(){return Array.from({length:10},function(_,i){return {id:uid(),num:String(i+1),name:""};});}
+function blankRoster(){return normalizePlayers([]);}
 function findTeam(id){return S.teams.filter(function(t){return t.id===id;})[0];}
 function applyTheme(t){
   if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t);
@@ -457,7 +467,7 @@ function teamsView(){
   h+='<div class="leg">'+(S.activeTeam?'Cargados desde «'+esc((findTeam(S.activeTeam)||{}).name||"")+'»':'Plantilla sin guardar')+'</div>';
   S.players.forEach(function(p){h+='<div class="er"><input class="no" data-f="num" data-id="'+p.id+'" value="'+esc(p.num)+'" maxlength="3" placeholder="Nº"><input class="nm" data-f="name" data-id="'+p.id+'" value="'+esc(p.name)+'" maxlength="20" placeholder="Nombre (opcional)"><button class="del" data-delp="'+p.id+'" aria-label="Eliminar">✕</button></div>';});
   h+='<button class="tb" data-x="add" style="padding:12px">+ Añadir jugador</button>';
-  h+='<button class="tb" data-x="blank" style="padding:12px;margin-top:4px">🧹 Plantilla en blanco (10 dorsales sin nombre)</button>';
+  h+='<button class="tb" data-x="blank" style="padding:12px;margin-top:4px">🧹 Plantilla en blanco (12 dorsales sin nombre)</button>';
   return h+'</div>';
 }
 
@@ -784,7 +794,7 @@ app.addEventListener("click",function(e){
   else if(x==="teams"){S.teamsReturnView=S.view;S.view="teams";}
   else if(x==="add"){S.players.push({id:uid(),num:"",name:""});save();}
   else if(x==="blank"){
-    if(!confirm("¿Sustituir los jugadores actuales por una plantilla en blanco (10 dorsales sin nombre)? Se borrará el registro del partido."))return;
+    if(!confirm("¿Sustituir los jugadores actuales por una plantilla en blanco (12 dorsales sin nombre)? Se borrará el registro del partido."))return;
     S.players=blankRoster();S.events=[];S.period=1;S.summaryPeriods=null;S.activeTeam=null;save();
   }
   else if(x==="newteam"){
