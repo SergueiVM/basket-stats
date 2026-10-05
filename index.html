@@ -108,6 +108,13 @@ h1{font-size:1rem;margin:0}
 .pkextra{display:block;width:100%;min-height:62px;margin:0 2px;padding:14px;border:1px solid var(--line);background:var(--bg);color:var(--text);border-radius:13px;font-weight:700;font-size:1rem;cursor:pointer}
 .pkextra.equipo{background:var(--accent);color:#fff;border-color:var(--accent)}
 .pkextra.warn{background:var(--ko);color:var(--kot);border-color:transparent}
+.pkfouls{display:grid;gap:8px;padding:0 2px 8px}
+.pkfouls button{min-height:64px;padding:10px 14px;border:1px solid var(--line);border-radius:12px;background:var(--bg);color:var(--text);text-align:left;font:inherit;cursor:pointer}
+.pkfouls button:first-child{min-height:76px;background:var(--accent);color:#fff;border-color:var(--accent)}
+.pkfouls button.selected{outline:3px solid var(--accent);outline-offset:1px}
+.pkfouls strong,.pkfouls small{display:block}
+.pkfouls strong{font-size:.98rem}
+.pkfouls small{margin-top:3px;font-size:.73rem;opacity:.82}
 @media (min-width:700px){
   .pkoverlay{padding:24px}
   .pksheet{max-width:1000px;max-height:90dvh;padding:18px 20px calc(18px + env(safe-area-inset-bottom,0px))}
@@ -136,6 +143,7 @@ h1{font-size:1rem;margin:0}
 .p.ro.action-player{cursor:pointer}
 .p.ro.action-player:disabled{opacity:.48;cursor:not-allowed}
 .p.ro.action-player:disabled:active{background:var(--card);color:var(--text)}
+.player-out{margin-top:3px;color:var(--danger);font-size:.52rem;font-weight:800;text-transform:uppercase}
 .pl{flex-shrink:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(70px,1fr));gap:7px;padding:0 8px 8px}
 .p{height:76px;border:1px solid var(--line);border-radius:13px;background:var(--card);color:var(--text);display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:800;font-size:1.4rem;line-height:1;cursor:pointer;touch-action:manipulation;padding:0}
 .p small{font-size:.66rem;font-weight:500;color:var(--muted);max-width:100%;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;white-space:normal;line-height:1.1;margin-top:3px}
@@ -245,6 +253,11 @@ var ACT=[
  {id:"d0",l:"Tiro 2 ✗",k:"f",grp:"d2",cat:"Tiro de 2",sub:"✗ fallo"},
  {id:"t0",l:"Tiro 3 ✗",k:"f",grp:"t3",cat:"Tiro de 3",sub:"✗ fallo"},
  {id:"tm",l:"Tiempo muerto",k:"n",grp:"tm",cat:"Tiempo muerto",sub:""}
+];
+var FOUL_TYPES=[
+ {id:"normal",label:"Normal",detail:"Lo habitual · también técnicas tipo 2 y disruptivas"},
+ {id:"circle",label:"Flagrante o técnica tipo 1",detail:"Con circulito"},
+ {id:"disqualifying",label:"Descalificante",detail:"Descalificación directa"}
 ];
 var GROUPS=[{id:"fal",l:"Falta"},{id:"per",l:"Pérdida"},{id:"rob",l:"Robo"},{id:"tap",l:"Tapón"},{id:"reb",l:"Rebote"},{id:"lib",l:"Tiro libre"},{id:"d2",l:"Tiro de 2"},{id:"t3",l:"Tiro de 3"}];
 var ORDERABLE_ACTIONS=GROUPS.filter(function(g){return g.id!=="lib"&&g.id!=="d2"&&g.id!=="t3";});
@@ -361,6 +374,13 @@ function sortedPlayers(){
 }
 function whoLbl(side,p){if(side==="rival")return "Rival";return p?who(pl(p)):"Equipo";}
 function foulsOf(pid){return S.events.filter(function(e){return e.side==="us"&&e.p===pid&&e.a==="fal";}).length;}
+function foulTypeOf(event){return FOUL_TYPES.some(function(type){return type.id===event.foulType;})?event.foulType:"normal";}
+function foulTypeLabel(typeId){return FOUL_TYPES.filter(function(type){return type.id===typeId;})[0].label;}
+function isPlayerDisqualified(pid){
+  var fouls=S.events.filter(function(e){return e.side==="us"&&e.p===pid&&e.a==="fal";});
+  return fouls.length>=5||fouls.filter(function(e){return foulTypeOf(e)==="circle";}).length>=2||
+    fouls.some(function(e){return foulTypeOf(e)==="disqualifying";});
+}
 function foulsInPeriod(side,q){return S.events.filter(function(e){return e.side===side&&e.a==="fal"&&(e.q||1)===q;}).length;}
 function ptsOf(pid){
   var t=0;
@@ -369,6 +389,9 @@ function ptsOf(pid){
 }
 function evLabel(e){
   if(e.a==="reb"&&e.off!==undefined)return "Rebote "+(e.off?"ofensivo":"defensivo");
+  if(e.a==="fal"&&foulTypeOf(e)!=="normal"){
+    return "Falta · "+foulTypeLabel(foulTypeOf(e));
+  }
   return act(e.a).l;
 }
 function badge(text,k,actionId){return '<span class="pkbadge '+(k||"n")+(actionId?" action-"+actionId+actionColorClass(actionId):"")+'">'+esc(text)+'</span>';}
@@ -378,7 +401,7 @@ function battery(n,cls,max){
   var c=cls||"bat";
   return '<span class="'+c+'">'+Array.from({length:max},function(_,i){return '<i class="'+(i<n?"on"+(n>=max?" over":""):"")+'"></i>';}).join("")+'</span>';
 }
-function selectablePlayers(){return sortedPlayers().filter(function(p){return foulsOf(p.id)<5;});}
+function selectablePlayers(){return sortedPlayers().filter(function(p){return !isPlayerDisqualified(p.id);});}
 function playerActions(){
   var general=ACT.filter(function(a){return ORDERABLE_ACTIONS.some(function(g){return g.id===a.grp;})&&S.enabled[a.grp];});
   var shots=ACT.filter(function(a){return (a.k==="m"||a.k==="f")&&S.enabled[a.grp];});
@@ -430,6 +453,14 @@ function flash(m,w){S.msg=m;S.warn=!!w;render();setTimeout(function(){if(S.msg==
 function scoreOf(side){var t=0;S.events.forEach(function(e){if(e.side!==side)return;if(e.a==="l1")t+=1;else if(e.a==="d1")t+=2;else if(e.a==="t1")t+=3;});return t;}
 
 function openPicker(opts){S.picker=opts;render();}
+function openFoulTypePicker(onPick,selectedType){
+  openPicker({
+    titleHtml:badge("Falta","n","fal")+'<span class="pksub">¿Qué tipo?</span>',
+    foulTypes:FOUL_TYPES,
+    selectedFoulType:selectedType||"normal",
+    onPickFoulType:onPick
+  });
+}
 function closePicker(){
   var o=S.picker;S.picker=null;
   if(o&&o.onCancel)o.onCancel();
@@ -445,11 +476,21 @@ function pickAction(id){
   if(o&&o.onPickAction)o.onPickAction(id);
   render();
 }
+function pickFoulType(type){
+  if(!FOUL_TYPES.some(function(option){return option.id===type;}))return;
+  var o=S.picker;S.picker=null;
+  if(o&&o.onPickFoulType)o.onPickFoulType(type);
+  render();
+}
 function renderPicker(){
   var o=S.picker;if(!o)return "";
   var h='<div class="pkoverlay"><div class="pksheet">';
   h+='<div class="pkhead"><span class="pktitle">'+(o.titleHtml||esc(o.title||""))+'</span><button data-pkcancel="1" aria-label="Cerrar">✕</button></div>';
-  if(o.actions){
+  if(o.foulTypes){
+    h+='<div class="pkfouls">'+o.foulTypes.map(function(type){
+      return '<button type="button" data-pkfoul="'+type.id+'" aria-pressed="'+(type.id===o.selectedFoulType)+'"'+(type.id===o.selectedFoulType?' class="selected"':"")+'><strong>'+esc(type.label)+'</strong><small>'+esc(type.detail)+'</small></button>';
+    }).join("")+'</div>';
+  }else if(o.actions){
     function actionButtons(actions){
       return actions.map(function(a){
         return '<button class="pkact '+a.k+(a.k==="n"?" action-"+a.id+actionColorClass(a.id):"")+(a.id===o.selectedAction?" selected":"")+'" data-pkact="'+a.id+'">'+esc(o.actionGrid?a.l:a.cat)+(o.actionGrid||!a.sub?"":' <span class="pksub2">'+esc(a.sub)+'</span>')+'</button>';
@@ -486,7 +527,7 @@ function startAction(id){
 function startPlayerAction(playerId){
   var player=pl(playerId);
   var actions=playerActions();
-  if(!player||foulsOf(playerId)>=5||!actions.length)return;
+  if(!player||isPlayerDisqualified(playerId)||!actions.length)return;
   openPicker({
     titleHtml:badge(lab(player),"n")+'<span class="pksub">'+esc(player.name?player.name+" · Selecciona una acción":"Selecciona una acción")+'</span>',
     actions:actions,
@@ -521,10 +562,19 @@ function startEdit(evId){
         titleHtml:subTitle(a),teamRow:true,rival:true,extra:"Cancelar",allPlayers:true,
         selectedSide:ev.side,selectedPlayer:ev.p,
         onPick:function(side,p){
-          ev.a=newId;ev.side=side;ev.p=p;delete ev.pairId;
-          if(newId!=="reb"){delete ev.off;delete ev.missedSide;}
-          else if(ev.missedSide)ev.off=side===ev.missedSide;
-          save();flash("✔ Editado · "+a.cat+" · "+whoLbl(side,p));
+          function applyEdit(foulType){
+            ev.a=newId;ev.side=side;ev.p=p;delete ev.pairId;
+            if(newId==="fal"&&side==="us"&&p)ev.foulType=foulType;
+            else delete ev.foulType;
+            if(newId!=="reb"){delete ev.off;delete ev.missedSide;}
+            else if(ev.missedSide)ev.off=side===ev.missedSide;
+            save();flash("✔ Editado · "+a.cat+" · "+whoLbl(side,p));
+          }
+          if(newId==="fal"&&side==="us"&&p){
+            openFoulTypePicker(function(foulType){applyEdit(foulType);},foulTypeOf(ev));
+            return;
+          }
+          applyEdit(null);
         },
         onCancel:function(){}
       });
@@ -577,6 +627,13 @@ function finalizeAction(id,side,p){
     }
     return;
   }
+  if(id==="fal"&&side==="us"&&p){
+    openFoulTypePicker(function(foulType){
+      S.events.push({id:uid(),side:side,p:p,a:id,q:S.period,foulType:foulType});
+      save();flash("✔ "+(foulType==="normal"?"Falta":"Falta · "+foulTypeLabel(foulType))+" · "+whoLbl(side,p));
+    });
+    return;
+  }
   S.events.push({id:uid(),side:side,p:p,a:id,q:S.period});
   save();
   flash("✔ "+a.l+" · "+whoLbl(side,p));
@@ -626,8 +683,9 @@ function mainView(){
   h+=S.msg?'<div class="msg'+(S.warn?" warn":"")+'">'+esc(S.msg)+'</div>':'<div class="msg">Pulsa una acción para registrar una jugada</div>';
   var playerActionsEnabled=S.playerActionMode&&playerActions().length>0;
   h+='<div class="logh">Jugadores</div><div class="roster'+(playerActionsEnabled?" interactive":"")+'">'+sortedPlayers().map(function(p){
-    var label=esc(lab(p))+playerNameMarkup(p)+'<span class="pts">'+ptsOf(p.id)+' pts</span>'+battery(foulsOf(p.id),"pbat");
-    if(playerActionsEnabled)return '<button type="button" class="p ro action-player" data-playeraction="'+p.id+'" aria-label="Registrar acción de '+esc(who(p))+'"'+(foulsOf(p.id)>=5?' disabled title="Jugador eliminado por faltas"':'')+'>'+label+'</button>';
+    var eliminated=isPlayerDisqualified(p.id);
+    var label=esc(lab(p))+playerNameMarkup(p)+'<span class="pts">'+ptsOf(p.id)+' pts</span>'+battery(foulsOf(p.id),"pbat")+(eliminated?'<span class="player-out">Descalificado</span>':"");
+    if(playerActionsEnabled)return '<button type="button" class="p ro action-player" data-playeraction="'+p.id+'" aria-label="Registrar acción de '+esc(who(p))+'"'+(eliminated?' disabled title="Jugador descalificado"':'')+'>'+label+'</button>';
     return '<div class="p ro">'+label+'</div>';
   }).join("")+'</div>';
   h+='<div class="logh">Registro ('+S.events.length+') · más reciente primero</div><div class="log">';
@@ -845,6 +903,8 @@ function validMatchData(data){
     if(e.pairId!==undefined&&typeof e.pairId!=="string")return false;
     if(e.off!==undefined&&typeof e.off!=="boolean")return false;
     if(e.missedSide!==undefined&&e.missedSide!=="us"&&e.missedSide!=="rival")return false;
+    if(e.foulType!==undefined&&(e.a!=="fal"||e.side!=="us"||!e.p||
+      !FOUL_TYPES.some(function(type){return type.id===e.foulType;})))return false;
     eventIds[e.id]=true;return true;
   });
 }
@@ -1018,6 +1078,7 @@ app.addEventListener("click",function(e){
   if(d.pks!==undefined){pickTarget(d.pks,d.pkp||null);return;}
   if(d.pkcancel!==undefined){closePicker();return;}
   if(d.pkact!==undefined){pickAction(d.pkact);return;}
+  if(d.pkfoul!==undefined){pickFoulType(d.pkfoul);return;}
   if(d.edit){startEdit(d.edit);return;}
   if(d.exportteam){exportTeam(d.exportteam);return;}
   if(d.x==="importteams"){document.getElementById("teamsfile").click();return;}
