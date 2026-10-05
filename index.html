@@ -150,7 +150,8 @@ h1{font-size:1rem;margin:0}
 .teams .tus{background:var(--accent)}
 .teams .triv{background:var(--riv)}
 .teams button.rdy{box-shadow:0 0 0 3px var(--text)}
-.teams.pk button.selected{box-shadow:0 0 0 3px var(--accent)}
+.teams.pk .tus.selected{box-shadow:0 0 0 3px var(--riv)}
+.teams.pk .triv.selected{box-shadow:0 0 0 3px var(--accent)}
 .teams button:active{filter:brightness(.85)}
 .logh{flex-shrink:0;font-size:.7rem;color:var(--muted);font-weight:700;text-transform:uppercase;padding:2px 12px}
 .log{flex:1;min-height:110px;overflow:auto;margin:0 8px 8px;background:var(--card);border:1px solid var(--line);border-radius:10px}
@@ -461,7 +462,7 @@ function renderPicker(){
     }else h+='<div class="pkactlist">'+actionButtons(o.actions)+'</div>';
   }else{
     var plist=o.allPlayers?sortedPlayers():selectablePlayers();
-    if(plist.length)h+='<div class="pl pk">'+plist.map(function(p){
+    if(o.players!==false&&plist.length)h+='<div class="pl pk">'+plist.map(function(p){
       return '<button class="p'+(o.selectedSide==="us"&&o.selectedPlayer===p.id?" selected":"")+'" data-pks="us" data-pkp="'+p.id+'" aria-label="'+esc(who(p))+'">'+esc(lab(p))+playerNameMarkup(p)+'</button>';
     }).join("")+'</div>';
     if(o.teamRow!==false){
@@ -490,7 +491,21 @@ function startPlayerAction(playerId){
   });
 }
 function startEdit(evId){
-  var ev=S.events.filter(function(v){return v.id===evId;})[0];if(!ev||ev.a==="tm")return;
+  var ev=S.events.filter(function(v){return v.id===evId;})[0];if(!ev)return;
+  if(ev.a==="tm"){
+    openPicker({
+      titleHtml:subTitle(act("tm")),
+      players:false,
+      teamRow:true,
+      rival:true,
+      selectedSide:ev.side,
+      onPick:function(side){
+        ev.side=side;ev.p=null;save();
+        flash("✔ Tiempo muerto · "+(side==="us"?S.clubName.trim()||"Nosotros":S.opponentName.trim()||"Rival"));
+      }
+    });
+    return;
+  }
   openPicker({
     titleHtml:badge("Editar","n")+'<span class="pksub">Selecciona una acción</span>',
     actions:ACT.filter(function(a){return S.enabled[a.grp]||a.id===ev.a;}),
@@ -616,7 +631,7 @@ function mainView(){
   var n=S.events.length;
   S.events.slice().reverse().forEach(function(e,i){
     var a=act(e.a);
-    h+='<div class="ev"><div class="info"><span class="n">'+(n-i)+'</span><span class="q">'+(S.periods<=4?"C":"T")+(e.q||1)+'</span><span class="k '+a.k+(a.k==="n"?" action-"+e.a+actionColorClass(e.a):"")+'">'+evLabel(e)+'</span><span class="w'+(e.side==="rival"?" riv":"")+'">'+esc(whoLbl(e.side,e.p))+'</span></div><div class="btns">'+(e.a==="tm"?"":'<button class="editbtn" data-edit="'+e.id+'" aria-label="Editar">✎</button>')+'<button class="delbtn" data-del="'+e.id+'" aria-label="Borrar">✕</button></div></div>';
+    h+='<div class="ev"><div class="info"><span class="n">'+(n-i)+'</span><span class="q">'+(S.periods<=4?"C":"T")+(e.q||1)+'</span><span class="k '+a.k+(a.k==="n"?" action-"+e.a+actionColorClass(e.a):"")+'">'+evLabel(e)+'</span><span class="w'+(e.side==="rival"?" riv":"")+'">'+esc(whoLbl(e.side,e.p))+'</span></div><div class="btns"><button class="editbtn" data-edit="'+e.id+'" aria-label="Editar">✎</button><button class="delbtn" data-del="'+e.id+'" aria-label="Borrar">✕</button></div></div>';
   });
   return h+'</div>';
 }
