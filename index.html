@@ -140,7 +140,7 @@ h1{font-size:1rem;margin:0}
 .p{height:76px;border:1px solid var(--line);border-radius:13px;background:var(--card);color:var(--text);display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:800;font-size:1.4rem;line-height:1;cursor:pointer;touch-action:manipulation;padding:0}
 .p small{font-size:.66rem;font-weight:500;color:var(--muted);max-width:100%;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;white-space:normal;line-height:1.1;margin-top:3px}
 .p.ro small,.pl.pk .p small{color:var(--accent);font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.02em}
-.p.ro small{color:var(--action-text)}
+.p.ro small{color:var(--accent)}
 .p small.alias{font-size:.56rem;letter-spacing:0;white-space:nowrap;overflow-wrap:normal;text-overflow:clip}
 .p.rdy{border:2px solid var(--accent)}
 .pl.pk .p.selected{border:3px solid var(--accent);background:var(--btn)}
@@ -299,6 +299,27 @@ function moveAction(id,direction){
   var order=normalizeActionOrder(S.actionOrder),index=order.indexOf(id),target=index+direction;
   if(index<0||target<0||target>=order.length)return;
   order.splice(index,1);order.splice(target,0,id);S.actionOrder=order;save();render();
+}
+function resetSettings(){
+  var enabled={};
+  GROUPS.forEach(function(group){enabled[group.id]=1;});
+  var maxRecordedPeriod=4;
+  S.events.forEach(function(event){if(event.q>maxRecordedPeriod)maxRecordedPeriod=Math.min(8,event.q);});
+  S.enabled=enabled;
+  S.actionOrder=ORDERABLE_ACTIONS.map(function(action){return action.id;});
+  S.actionColors={};
+  S.playerActionMode=true;
+  S.periods=maxRecordedPeriod;
+  S.period=1;
+  S.summaryPeriods=null;
+  S.home=true;
+  S.clubName="Nosotros";
+  S.opponentName="Rival";
+  S.theme="system";
+  S.picker=null;
+  setTheme("system");
+  save();
+  render();
 }
 function lab(p){return p.num!==""?p.num:(p.name?p.name.charAt(0).toUpperCase():"?");}
 function playerAlias(p){return typeof p.alias==="string"?p.alias.trim():"";}
@@ -621,6 +642,7 @@ function setView(){
   h+='</div>';
   h+='<div class="sec">Transferir todo</div><div class="leg">Guarda o restaura el partido actual, los jugadores, los equipos guardados y los ajustes para cambiar de dispositivo.</div>';
   h+='<div class="ex"><button class="tb" data-x="exportbackup"><i class="fa-solid fa-download" aria-hidden="true"></i> Exportar todo</button> <button class="tb" data-x="importbackup"><i class="fa-solid fa-upload" aria-hidden="true"></i> Importar todo</button><input id="backupfile" type="file" accept=".json,application/json" style="display:none"></div>';
+  h+='<div class="sec">Restablecer configuración</div><div class="leg">Restaura las opciones predeterminadas sin borrar el registro, los jugadores ni los equipos guardados.</div><button class="tb dg" data-x="resetsettings" style="padding:12px">Restablecer todas las opciones</button>';
   h+='<button class="tb dg" data-x="new" style="padding:12px;margin-top:4px">Nuevo partido (borrar registro)</button>';
   return h+'</div>';
 }
@@ -1048,6 +1070,11 @@ app.addEventListener("click",function(e){
     var sn=prompt("Guardar la plantilla actual como equipo. Nombre:");if(sn===null)return;sn=sn.trim();if(!sn)return;
     var newTeam={id:uid(),name:sn,players:sortPlayersList(S.players.map(function(p){return {id:uid(),num:p.num,name:p.name,alias:p.alias||""};}))};
     S.teams.push(newTeam);S.activeTeam=newTeam.id;save();
+  }
+  else if(x==="resetsettings"){
+    if(!confirm("¿Restablecer todas las opciones de la aplicación? Se conservarán el registro actual, los jugadores y los equipos guardados."))return;
+    if(!confirm("Confirmación final: los colores, el orden de las acciones, las opciones activadas y los ajustes del partido volverán a sus valores predeterminados. Los equipos guardados no se borrarán. ¿Continuar?"))return;
+    resetSettings();return;
   }
   else if(x==="new"){
     if(!confirm("¿Empezar un nuevo partido? Se borrará todo el registro (jugadores y ajustes se mantienen)."))return;
