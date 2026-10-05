@@ -255,7 +255,7 @@ var ACT=[
  {id:"tm",l:"Tiempo muerto",k:"n",grp:"tm",cat:"Tiempo muerto",sub:""}
 ];
 var FOUL_TYPES=[
- {id:"normal",label:"Normal",detail:"Lo habitual · también técnicas tipo 2 y disruptivas"},
+ {id:"normal",label:"Normal, disruptiva o técnica tipo 2",detail:"Lo habitual"},
  {id:"circle",label:"Flagrante o técnica tipo 1",detail:"Con circulito"},
  {id:"disqualifying",label:"Descalificante",detail:"Descalificación directa"}
 ];
@@ -389,9 +389,8 @@ function ptsOf(pid){
 }
 function evLabel(e){
   if(e.a==="reb"&&e.off!==undefined)return "Rebote "+(e.off?"ofensivo":"defensivo");
-  if(e.a==="fal"&&foulTypeOf(e)!=="normal"){
-    return "Falta · "+foulTypeLabel(foulTypeOf(e));
-  }
+  if(e.a==="fal"&&foulTypeOf(e)==="circle")return "○ Falta · "+foulTypeLabel(foulTypeOf(e));
+  if(e.a==="fal")return "Falta · "+foulTypeLabel(foulTypeOf(e));
   return act(e.a).l;
 }
 function badge(text,k,actionId){return '<span class="pkbadge '+(k||"n")+(actionId?" action-"+actionId+actionColorClass(actionId):"")+'">'+esc(text)+'</span>';}
