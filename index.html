@@ -1158,6 +1158,7 @@ app.addEventListener("click",function(e){
   if(d.x==="importbackup"){document.getElementById("backupfile").click();return;}
   if(d.del){
     var ev=S.events.filter(function(v){return v.id===d.del;})[0];
+    if(!ev||!confirm("¿Borrar este registro?"))return;
     if(ev&&ev.pairId)S.events.forEach(function(v){if(v.id!==ev.id&&v.pairId===ev.pairId)delete v.pairId;});
     S.events=S.events.filter(function(v){return v.id!==d.del;});
     save();render();return;
