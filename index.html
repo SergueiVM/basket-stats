@@ -199,17 +199,32 @@ function uid(){seq++;return Date.now().toString(36)+seq;}
 function normalizePlayers(players){
   var list=Array.isArray(players)?players.slice():[];
   if(!list.length){
-    return Array.from({length:DEFAULT_PLAYERS},function(_,i){return {id:uid(),num:String(i+1),name:""};});
+    list=Array.from({length:DEFAULT_PLAYERS},function(_,i){return {id:uid(),num:String(i+1),name:""};});
+    return sortPlayersList(list);
   }
   list=list.slice(0,DEFAULT_PLAYERS).map(function(p,i){return {id:p&&p.id?String(p.id):uid(),num:(p&&p.num!==undefined&&p.num!==null&&String(p.num).trim()!=="")?String(p.num):String(i+1),name:p&&p.name!==undefined?String(p.name):""};});
   while(list.length<DEFAULT_PLAYERS){list.push({id:uid(),num:String(list.length+1),name:""});}
-  return list;
+  return sortPlayersList(list);
 }
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
 function lab(p){return p.num!==""?p.num:(p.name?p.name.charAt(0).toUpperCase():"?");}
 function who(p){return p?((p.num!==""?"#"+p.num:"")+(p.name?" "+p.name:"")||"?"):"(eliminado)";}
 function pl(id){return S.players.filter(function(p){return p.id===id;})[0];}
 function isNum(v){return v!==""&&!isNaN(v);}
+function sortPlayersList(players){
+  var list=Array.isArray(players)?players.slice():[];
+  return list.sort(function(a,b){
+    var an=String(a&&a.num!==undefined&&a.num!==null?a.num:"" ).trim();
+    var bn=String(b&&b.num!==undefined&&b.num!==null?b.num:"" ).trim();
+    var af=an===""?Number.MAX_SAFE_INTEGER:parseFloat(an);
+    var bf=bn===""?Number.MAX_SAFE_INTEGER:parseFloat(bn);
+    if(isNaN(af)&&isNaN(bf))return String(a&&a.name||"").localeCompare(String(b&&b.name||""),"es",{sensitivity:"base"});
+    if(isNaN(af))return 1;
+    if(isNaN(bf))return -1;
+    if(af===bf)return String(a&&a.name||"").localeCompare(String(b&&b.name||""),"es",{sensitivity:"base"});
+    return af-bf;
+  });
+}
 function timeoutsInHalf(side,period){
   var halfEnd=Math.ceil(S.periods/2),firstHalf=period<=halfEnd;
   var start=firstHalf?1:halfEnd+1,end=firstHalf?halfEnd:S.periods;
@@ -254,7 +269,8 @@ function applyLoaded(d){
   S.clubName=d.clubName===undefined?"Nosotros":String(d.clubName);
   S.opponentName=d.opponentName===undefined?"Rival":String(d.opponentName);
   if(d.enabled)for(var k in S.enabled)if(k in d.enabled)S.enabled[k]=!!d.enabled[k];
-  S.teams=d.teams||[];S.activeTeam=d.activeTeam||null;
+  S.teams=(d.teams||[]).map(function(t){if(!t)return t;var team={id:t.id,name:t.name,players:sortPlayersList(Array.isArray(t.players)?t.players:[])};return team;});
+  S.activeTeam=d.activeTeam||null;
 }
 function load(){
   try{var r=localStorage.getItem(KEY);if(r){var d=JSON.parse(r);if(d&&d.players&&d.players.length){applyLoaded(d);return;}}}catch(e){}
@@ -270,7 +286,11 @@ function load(){
   }catch(e){}
   S.players=normalizePlayers([]);
 }
-function save(){try{localStorage.setItem(KEY,JSON.stringify({players:S.players,events:S.events,teams:S.teams,activeTeam:S.activeTeam,enabled:S.enabled,periods:S.periods,period:S.period,home:S.home,clubName:S.clubName,opponentName:S.opponentName}));}catch(e){}}
+function save(){
+  S.players=sortPlayersList(S.players);
+  S.teams=(S.teams||[]).map(function(t){if(!t)return t; t.players=sortPlayersList(Array.isArray(t.players)?t.players:[]); return t;});
+  try{localStorage.setItem(KEY,JSON.stringify({players:S.players,events:S.events,teams:S.teams,activeTeam:S.activeTeam,enabled:S.enabled,periods:S.periods,period:S.period,home:S.home,clubName:S.clubName,opponentName:S.opponentName}));}catch(e){}
+}
 function blankRoster(){return normalizePlayers([]);}
 function findTeam(id){return S.teams.filter(function(t){return t.id===id;})[0];}
 function applyTheme(t){
@@ -763,7 +783,7 @@ app.addEventListener("click",function(e){
   if(d.loadteam){
     var lt=findTeam(d.loadteam);if(!lt)return;
     if(!confirm('¿Cargar el equipo "'+lt.name+'"? Sustituye a los jugadores actuales y empieza un partido nuevo (se borra el registro).'))return;
-    S.players=lt.players.map(function(p){return {id:uid(),num:p.num,name:p.name};});
+    S.players=sortPlayersList(lt.players.map(function(p){return {id:uid(),num:p.num,name:p.name};}));
     S.events=[];S.period=1;S.summaryPeriods=null;S.activeTeam=lt.id;S.view="main";save();render();return;
   }
   if(d.delteam){
@@ -774,13 +794,13 @@ app.addEventListener("click",function(e){
     save();render();return;
   }
   if(d.taddp){
-    var tm=findTeam(d.taddp);if(tm){tm.players.push({id:uid(),num:"",name:""});save();render();}
+    var tm=findTeam(d.taddp);if(tm){tm.players.push({id:uid(),num:"",name:""});tm.players=sortPlayersList(tm.players);save();render();}
     return;
   }
   if(d.tdelp){
     var parts=d.tdelp.split("|"),tm2=findTeam(parts[0]);
     if(tm2){
-      if(confirm("¿Eliminar a este jugador de la plantilla?")){tm2.players=tm2.players.filter(function(p){return p.id!==parts[1];});save();render();}
+      if(confirm("¿Eliminar a este jugador de la plantilla?")){tm2.players=sortPlayersList(tm2.players.filter(function(p){return p.id!==parts[1];}));save();render();}
     }
     return;
   }
@@ -799,12 +819,12 @@ app.addEventListener("click",function(e){
   }
   else if(x==="newteam"){
     var nn=prompt("Nombre del nuevo equipo:");if(nn===null)return;nn=nn.trim();if(!nn)return;
-    var nt={id:uid(),name:nn,players:blankRoster()};S.teams.push(nt);save();
+    var nt={id:uid(),name:nn,players:sortPlayersList(blankRoster())};S.teams.push(nt);save();
     S.editTeamId=nt.id;S.view="team";
   }
   else if(x==="saveteam"){
     var sn=prompt("Guardar la plantilla actual como equipo. Nombre:");if(sn===null)return;sn=sn.trim();if(!sn)return;
-    var newTeam={id:uid(),name:sn,players:S.players.map(function(p){return {id:uid(),num:p.num,name:p.name};})};
+    var newTeam={id:uid(),name:sn,players:sortPlayersList(S.players.map(function(p){return {id:uid(),num:p.num,name:p.name};}))};
     S.teams.push(newTeam);S.activeTeam=newTeam.id;save();
   }
   else if(x==="new"){
@@ -834,10 +854,10 @@ document.getElementById("app").addEventListener("change",function(e){
 });
 document.getElementById("app").addEventListener("input",function(e){
   var t=e.target;
-  if(t.dataset.f){var p=pl(t.dataset.id);if(p){p[t.dataset.f]=t.value;save();}return;}
+  if(t.dataset.f){var p=pl(t.dataset.id);if(p){p[t.dataset.f]=t.value;S.players=sortPlayersList(S.players);save();}return;}
   if(t.dataset.tf){
     var parts=t.dataset.tid.split("|"),tm=findTeam(parts[0]),tp=tm&&tm.players.filter(function(x){return x.id===parts[1];})[0];
-    if(tp){tp[t.dataset.tf]=t.value;save();}
+    if(tp){tp[t.dataset.tf]=t.value;tm.players=sortPlayersList(tm.players);save();}
     return;
   }
   if(t.dataset.tname){var tm2=findTeam(t.dataset.tname);if(tm2){tm2.name=t.value;save();}return;}
