@@ -1,5 +1,5 @@
-const CACHE = "bball-app-v16";
-const ASSETS = ["./index.html", "./manifest.json", "./icon.svg", "./icon-maskable.svg", "./favicon.ico", "./icon-192.png", "./icon-512.png", "./icon-512-maskable.png"];
+const CACHE = "bball-app-v18";
+const ASSETS = ["./index.html", "./manifest.json", "./icon.svg", "./icon-maskable.svg", "./icon-install.svg", "./favicon.ico", "./icon-192-install-v2.png", "./icon-512-install-v2.png", "./icon-512-maskable-v2.png"];
 
 self.addEventListener("install", (e) => {
   e.waitUntil(
