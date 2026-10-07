@@ -382,13 +382,17 @@ function playerNameMarkup(p){var alias=playerAlias(p),display=alias||p.name;retu
 function who(p){return p?((p.num!==""?"#"+p.num:"")+(p.name?" "+p.name:"")||"?"):"(eliminado)";}
 function pl(id){return S.players.filter(function(p){return p.id===id;})[0];}
 function isNum(v){return v!==""&&!isNaN(v);}
+function playerNumberForSort(num){
+  var value=String(num===undefined||num===null?"":num).trim();
+  return value==="00"?100:parseFloat(value);
+}
 function sortPlayersList(players){
   var list=Array.isArray(players)?players.slice():[];
   return list.sort(function(a,b){
     var an=String(a&&a.num!==undefined&&a.num!==null?a.num:"" ).trim();
     var bn=String(b&&b.num!==undefined&&b.num!==null?b.num:"" ).trim();
-    var af=an===""?Number.MAX_SAFE_INTEGER:parseFloat(an);
-    var bf=bn===""?Number.MAX_SAFE_INTEGER:parseFloat(bn);
+    var af=an===""?Number.MAX_SAFE_INTEGER:playerNumberForSort(an);
+    var bf=bn===""?Number.MAX_SAFE_INTEGER:playerNumberForSort(bn);
     if(isNaN(af)&&isNaN(bf))return String(a&&a.name||"").localeCompare(String(b&&b.name||""),"es",{sensitivity:"base"});
     if(isNaN(af))return 1;
     if(isNaN(bf))return -1;
@@ -405,7 +409,7 @@ function sortedPlayers(){
   var withIdx=S.players.map(function(p,i){return {p:p,i:i};});
   withIdx.sort(function(a,b){
     var an=isNum(a.p.num),bn=isNum(b.p.num);
-    if(an&&bn)return parseFloat(a.p.num)-parseFloat(b.p.num);
+    if(an&&bn)return playerNumberForSort(a.p.num)-playerNumberForSort(b.p.num);
     if(an&&!bn)return -1;
     if(!an&&bn)return 1;
     return a.i-b.i;
@@ -730,11 +734,22 @@ function finalizeAction(id,side,p){
   }
 }
 function render(){
+  var scrollState={x:window.scrollX,y:window.scrollY,containers:[]};
+  [".pg",".log",".pksheet"].forEach(function(selector){
+    document.querySelectorAll(selector).forEach(function(element,index){
+      scrollState.containers.push({selector:selector,index:index,left:element.scrollLeft,top:element.scrollTop});
+    });
+  });
   var h="";
   if(S.view==="main"&&S.logExpanded)h=renderLog(true);
   else if(S.view==="set")h=setView();else if(S.view==="sum")h=sumView();else if(S.view==="teams")h=teamsView();else if(S.view==="team")h=teamView();else h=mainView();
   h+=renderPicker();
   document.getElementById("app").innerHTML=h;
+  window.scrollTo(scrollState.x,scrollState.y);
+  scrollState.containers.forEach(function(position){
+    var element=document.querySelectorAll(position.selector)[position.index];
+    if(element){element.scrollLeft=position.left;element.scrollTop=position.top;}
+  });
 }
 
 function mainView(){
