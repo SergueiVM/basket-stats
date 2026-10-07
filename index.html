@@ -883,7 +883,7 @@ function sumView(){
   var selected=selectedSummaryPeriods(),qLabel=S.periods<=4?"C":"T";
   h+='<div class="ex icon-actions"><button class="iconbtn" id="exportmatch" data-tip="Exportar partido" aria-label="Exportar partido"><i class="fa-solid fa-file-export" aria-hidden="true"></i></button>'
     +'<button class="iconbtn" data-x="importmatch" data-tip="Importar partido" aria-label="Importar partido"><i class="fa-solid fa-file-import" aria-hidden="true"></i></button>'
-    +'<input id="matchfile" type="file" accept=".json,application/json" style="display:none"><button class="tb" id="xcsv"><i class="fa-solid fa-file-csv" aria-hidden="true"></i> Exportar CSV</button></div>';
+    +'<input id="matchfile" type="file" accept=".json,application/json" style="display:none"><button class="tb" id="xcsv"><i class="fa-solid fa-file-csv" aria-hidden="true"></i> Exportar CSV</button><button class="tb" id="xpdf" title="Imprimir o guardar como PDF"><i class="fa-solid fa-file-pdf" aria-hidden="true"></i> Exportar PDF</button></div>';
   h+='<div class="period-toggles" aria-label="Cuartos o tiempos incluidos">'+Array.from({length:S.periods},function(_,i){
     var n=i+1,on=selected.indexOf(n)!==-1;
     return '<button type="button" class="period-toggle'+(on?" on":"")+'" data-summary-period="'+n+'" aria-pressed="'+on+'">'+qLabel+n+'</button>';
@@ -929,6 +929,21 @@ function exportCsv(){
   computeTable(summary.events).forEach(function(r){lines.push([r.name,r.pt,r.c.fal,r.c.per,r.c.rob,r.c.tap,r.c.reb,r.c.rebOff,r.c.rebDef,r.c.l1,r.c.l0,r.c.d1,r.c.d0,r.c.t1,r.c.t0]);});
   var csv="\uFEFF"+lines.map(function(r){return r.map(csvq).join(";");}).join("\r\n")+"\r\n";
   saveFile("estadisticas-baloncesto-"+today().iso+".csv",csv,"text/csv;charset=utf-8");
+}
+function exportPdf(){
+  var printWindow=window.open("","_blank");
+  if(!printWindow){flash("No se pudo abrir la ventana de impresión. Permite las ventanas emergentes e inténtalo de nuevo.",true);return;}
+  var summary=summaryData(),title="Estadísticas de baloncesto";
+  var heading='<h1>'+esc(title)+'</h1><p>'+esc(S.clubName.trim()||"Nosotros")+' vs. '+esc(S.opponentName.trim()||"Rival")+'</p>'
+    +'<p>'+esc(summary.title)+' · '+esc(new Date().toLocaleDateString("es-ES"))+'</p>';
+  var html='<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><title>'+esc(title)+' - '+today().iso+'</title>'
+    +'<style>@page{size:landscape;margin:12mm}body{font:12px system-ui,-apple-system,"Segoe UI",sans-serif;color:#1c1c1e;margin:0}h1{font-size:20px;margin:0 0 4px}p{margin:3px 0 12px;color:#555}table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:10px}th,td{border:1px solid #b8b8b8;padding:5px 3px;text-align:center;overflow-wrap:anywhere}th{background:#eee;font-weight:700}th:first-child,td:first-child{text-align:left}tr.tot{font-weight:700;background:#f2f2f2}tr.riv{font-weight:700}td small{display:block;font-size:8px}.leg{margin-top:8px;color:#555;font-size:9px}thead{display:table-header-group}tr{break-inside:avoid}</style></head><body>'
+    +heading+statTable(summary.events,"")+'</bo'+'dy></html>';
+  printWindow.document.open();
+  printWindow.document.write(html);
+  printWindow.document.close();
+  printWindow.focus();
+  printWindow.print();
 }
 function exportMatch(){
   var data={format:"basket-stats-match",version:1,match:{
@@ -1227,6 +1242,7 @@ app.addEventListener("click",function(e){
     return;
   }
   if(b.id==="xcsv"){exportCsv();return;}
+  if(b.id==="xpdf"){exportPdf();return;}
   if(b.id==="exportmatch"){exportMatch();return;}
   if(d.theme){setTheme(d.theme);render();return;}
   if(d.editteam){S.editTeamId=d.editteam;S.view="team";render();return;}

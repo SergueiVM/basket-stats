@@ -1,4 +1,4 @@
-const CACHE = "bball-app-v14";
+const CACHE = "bball-app-v15";
 const ASSETS = ["./index.html", "./manifest.json", "./icon.svg", "./icon-maskable.svg", "./favicon.ico", "./icon-192.png", "./icon-512.png", "./icon-512-maskable.png"];
 
 self.addEventListener("install", (e) => {
