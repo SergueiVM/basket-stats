@@ -426,6 +426,7 @@ function ptsOf(pid){
 }
 function evLabel(e){
   if(e.a==="reb"&&e.off!==undefined)return "Rebote "+(e.off?"ofensivo":"defensivo");
+  if(e.a==="fal"&&e.side==="rival")return "Falta";
   if(e.a==="fal"&&foulTypeOf(e)==="circle")return "○ Falta · "+foulTypeLabel(foulTypeOf(e));
   if(e.a==="fal")return "Falta · "+foulTypeLabel(foulTypeOf(e));
   return act(e.a).l;
