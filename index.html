@@ -245,7 +245,10 @@ tr.riv td.pt{color:var(--riv)}
 .color-row select{min-width:150px;padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--text);font:inherit}
 .action-settings{display:flex;flex-direction:column;gap:6px}
 .action-setting{display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--line);padding:3px 0}
+.action-setting.dragging{opacity:.55}
 .action-setting .ck{flex:1;min-width:0;padding:6px 2px}
+.drag-handle{flex:0 0 32px;display:grid;place-items:center;height:36px;color:var(--muted);font-size:1.25rem;cursor:grab;touch-action:none;user-select:none}
+.drag-handle:active{cursor:grabbing}
 .order-controls{display:flex;gap:4px}
 .order-controls button{width:38px;height:36px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--text);font-size:1rem;cursor:pointer}
 .order-controls button:disabled{opacity:.4;cursor:default}
@@ -281,7 +284,7 @@ var COLOR_OPTIONS=[{id:"info",l:"Por defecto"},{id:"azul",l:"Azul"},{id:"celeste
 var LEGACY_COLOR_HEX={info:"#cff4fc",azul:"#dbeafe",celeste:"#cffafe",turquesa:"#ccfbf1",verde:"#dcfce7",lima:"#ecfccb",amarillo:"#fef3c7",naranja:"#ffedd5",coral:"#ffe4e1",rojo:"#fee2e2",rosa:"#fce7f3",morado:"#f3e8ff",lavanda:"#ede9fe",gris:"#e5e7eb",marron:"#f0e2d3"};
 function act(id){return ACT.filter(function(a){return a.id===id;})[0];}
 var DEFAULT_PLAYERS=12,MAX_ALIAS_LENGTH=8;
-var S={players:[],events:[],teams:[],activeTeam:null,editTeamId:null,enabled:{fal:1,per:1,rob:1,tap:1,reb:1,lib:1,d2:1,t3:1},actionOrder:ORDERABLE_ACTIONS.map(function(a){return a.id;}),actionColors:{},playerActionMode:true,periods:4,period:1,summaryPeriods:null,home:true,clubName:"Nosotros",opponentName:"Rival",theme:"system",picker:null,view:"main",logExpanded:false,msg:"",warn:false};
+var S={players:[],events:[],teams:[],activeTeam:null,editTeamId:null,enabled:{fal:1,per:1,rob:1,tap:1,reb:1,lib:1,d2:1,t3:1},askReboundAfterMiss:true,actionOrder:ORDERABLE_ACTIONS.map(function(a){return a.id;}),actionColors:{},playerActionMode:true,periods:4,period:1,summaryPeriods:null,home:true,clubName:"Nosotros",opponentName:"Rival",theme:"system",picker:null,view:"main",logExpanded:false,msg:"",warn:false};
 var seq=0;
 function uid(){seq++;return Date.now().toString(36)+seq;}
 function normalizePlayers(players){
@@ -323,6 +326,9 @@ function orderedActions(actions){
   var order=normalizeActionOrder(S.actionOrder);
   return actions.slice().sort(function(a,b){return order.indexOf(a.id)-order.indexOf(b.id);});
 }
+function setActionOrderFromRows(container){
+  S.actionOrder=Array.prototype.map.call(container.querySelectorAll("[data-order-row]"),function(row){return row.dataset.orderRow;});
+}
 function moveAction(id,direction){
   var order=normalizeActionOrder(S.actionOrder),index=order.indexOf(id),target=index+direction;
   if(index<0||target<0||target>=order.length)return;
@@ -334,6 +340,7 @@ function resetSettings(){
   var maxRecordedPeriod=4;
   S.events.forEach(function(event){if(event.q>maxRecordedPeriod)maxRecordedPeriod=Math.min(8,event.q);});
   S.enabled=enabled;
+  S.askReboundAfterMiss=true;
   S.actionOrder=ORDERABLE_ACTIONS.map(function(action){return action.id;});
   S.actionColors={};
   S.playerActionMode=true;
@@ -421,6 +428,7 @@ function playerActions(){
   return orderedActions(general).concat(shots);
 }
 function applyLoaded(d){
+  var reboundEnabled=!!(d.enabled&&("reb" in d.enabled)?d.enabled.reb:true);
   S.players=normalizePlayers(d.players||[]);S.events=d.events||[];
   S.actionColors=normalizeActionColors(d.actionColors);
   S.actionOrder=normalizeActionOrder(d.actionOrder);
@@ -432,6 +440,8 @@ function applyLoaded(d){
   S.opponentName=d.opponentName===undefined?"Rival":String(d.opponentName);
   if(!d.enabled||!("tap" in d.enabled))S.enabled.tap=1;
   if(d.enabled)for(var k in S.enabled)if(k in d.enabled)S.enabled[k]=!!d.enabled[k];
+  if(d.showReboundButton===false)S.enabled.reb=0;
+  S.askReboundAfterMiss=d.askReboundAfterMiss===undefined?reboundEnabled:d.askReboundAfterMiss===true;
   S.teams=(d.teams||[]).map(function(t){if(!t)return t;var team={id:t.id,name:t.name,players:sortPlayersList((Array.isArray(t.players)?t.players:[]).map(function(p){return {id:p.id,num:p.num,name:p.name,alias:typeof p.alias==="string"?p.alias.slice(0,MAX_ALIAS_LENGTH):""};}))};return team;});
   S.activeTeam=d.activeTeam||null;
 }
@@ -452,7 +462,7 @@ function load(){
 function save(){
   S.players=sortPlayersList(S.players);
   S.teams=(S.teams||[]).map(function(t){if(!t)return t; t.players=sortPlayersList(Array.isArray(t.players)?t.players:[]); return t;});
-  try{localStorage.setItem(KEY,JSON.stringify({players:S.players,events:S.events,teams:S.teams,activeTeam:S.activeTeam,enabled:S.enabled,actionOrder:S.actionOrder,actionColors:S.actionColors,playerActionMode:S.playerActionMode,periods:S.periods,period:S.period,home:S.home,clubName:S.clubName,opponentName:S.opponentName}));}catch(e){}
+  try{localStorage.setItem(KEY,JSON.stringify({players:S.players,events:S.events,teams:S.teams,activeTeam:S.activeTeam,enabled:S.enabled,askReboundAfterMiss:S.askReboundAfterMiss,actionOrder:S.actionOrder,actionColors:S.actionColors,playerActionMode:S.playerActionMode,periods:S.periods,period:S.period,home:S.home,clubName:S.clubName,opponentName:S.opponentName}));}catch(e){}
 }
 function blankRoster(){return normalizePlayers([]);}
 function findTeam(id){return S.teams.filter(function(t){return t.id===id;})[0];}
@@ -687,7 +697,7 @@ function finalizeAction(id,side,p){
   S.events.push({id:uid(),side:side,p:p,a:id,q:S.period});
   save();
   flash("✔ "+a.l+" · "+whoLbl(side,p));
-  if((id==="l0"||id==="d0"||id==="t0")&&S.enabled.reb){
+  if((id==="l0"||id==="d0"||id==="t0")&&S.askReboundAfterMiss){
     openPicker({
       titleHtml:badge("Rebote","n","reb")+'<span class="pksub">¿quién lo coge?</span>',teamRow:true,rival:true,extra:"No hay rebote",
       onPick:function(side3,p3){
@@ -770,13 +780,14 @@ function setView(){
   h+='<label class="namefield">Rival<input class="tnameinput" data-score-name="opponentName" value="'+esc(S.opponentName)+'" maxlength="30"></label>';
   h+='<div class="sec">Registro rápido</div><label class="ck"><input type="checkbox" id="playerActionMode"'+(S.playerActionMode?" checked":"")+'>Seleccionar la acción al pulsar un jugador</label><div class="leg">Al pulsar un jugador del partido podrás elegir directamente la acción que ha realizado. El registro habitual desde los botones de acción seguirá disponible.</div>';
   h+='<div class="sec">Apariencia</div><div class="seg">'+["system","light","dark"].map(function(t){return '<button class="'+(S.theme===t?"on":"")+'" data-theme="'+t+'">'+(t==="system"?"Sistema":t==="light"?"Claro":"Oscuro")+'</button>';}).join("")+'</div>';
-  h+='<div class="sec">Acciones a registrar</div><div class="leg">Ordena las acciones con las flechas. Esto no cambia el orden de los tiros ni del tiempo muerto.</div><div class="action-settings">';
+  h+='<div class="sec">Acciones a registrar</div><div class="leg">Arrastra las acciones para ordenarlas o usa las flechas. Esto no cambia el orden de los tiros ni del tiempo muerto.</div><div class="action-settings">';
   var order=normalizeActionOrder(S.actionOrder);
   ORDERABLE_ACTIONS.slice().sort(function(a,b){return order.indexOf(a.id)-order.indexOf(b.id);}).forEach(function(g,index){
-    h+='<div class="action-setting"><label class="ck"><input type="checkbox" data-grp="'+g.id+'"'+(S.enabled[g.id]?" checked":"")+'>'+g.l+'</label><div class="order-controls"><button type="button" data-order-action="'+g.id+'" data-order-direction="-1" aria-label="Subir '+g.l+'"'+(index===0?" disabled":"")+'>↑</button><button type="button" data-order-action="'+g.id+'" data-order-direction="1" aria-label="Bajar '+g.l+'"'+(index===order.length-1?" disabled":"")+'>↓</button></div></div>';
+    h+='<div class="action-setting" data-order-row="'+g.id+'"><span class="drag-handle" aria-hidden="true">⠿</span><label class="ck"><input type="checkbox" data-grp="'+g.id+'"'+(S.enabled[g.id]?" checked":"")+'>'+g.l+'</label><div class="order-controls"><button type="button" data-order-action="'+g.id+'" data-order-direction="-1" aria-label="Subir '+g.l+'"'+(index===0?" disabled":"")+'>↑</button><button type="button" data-order-action="'+g.id+'" data-order-direction="1" aria-label="Bajar '+g.l+'"'+(index===order.length-1?" disabled":"")+'>↓</button></div></div>';
   });
   h+='</div><div class="sec">Tiros</div>';
   GROUPS.filter(function(g){return g.id==="lib"||g.id==="d2"||g.id==="t3";}).forEach(function(g){h+='<label class="ck"><input type="checkbox" data-grp="'+g.id+'"'+(S.enabled[g.id]?" checked":"")+'>'+g.l+'</label>';});
+  h+='<label class="ck"><input type="checkbox" id="askReboundAfterMiss"'+(S.askReboundAfterMiss?" checked":"")+'>Preguntar rebote tras tiro fallado</label><div class="leg">Independiente de la acción Rebote: puedes ocultar su botón y mantener activa esta pregunta.</div>';
   h+='<div class="sec">Colores de las acciones</div><div class="leg">Los tiros mantienen sus colores de acierto y fallo. Puedes personalizar el resto de acciones.</div><div class="color-settings">';
   COLOR_ACTIONS.forEach(function(a){h+='<label class="color-row" for="action-color-'+a.id+'"><span>'+a.l+'</span><select id="action-color-'+a.id+'" data-action-color="'+a.id+'" aria-label="Color de '+a.l+'">'+COLOR_OPTIONS.map(function(option){return '<option value="'+option.id+'"'+((S.actionColors[a.id]||"info")===option.id?" selected":"")+'>'+option.l+'</option>';}).join("")+'</select></label>';});
   h+='</div>';
@@ -921,7 +932,7 @@ function exportCsv(){
 function exportMatch(){
   var data={format:"basket-stats-match",version:1,match:{
     players:S.players.map(function(p){return {id:p.id,num:p.num,name:p.name,alias:playerAlias(p)};}),events:S.events,
-    enabled:S.enabled,actionOrder:S.actionOrder,actionColors:S.actionColors,periods:S.periods,period:S.period,home:S.home,
+    enabled:S.enabled,askReboundAfterMiss:S.askReboundAfterMiss,actionOrder:S.actionOrder,actionColors:S.actionColors,periods:S.periods,period:S.period,home:S.home,
     clubName:S.clubName,opponentName:S.opponentName,playerActionMode:S.playerActionMode
   }};
   return saveFile("partido-baloncesto-"+today().iso+".json",JSON.stringify(data,null,2),"application/json;charset=utf-8");
@@ -940,6 +951,7 @@ function validMatchData(data){
   }
   if(!validPlayers(m.players)||!Array.isArray(m.events))return false;
   if(m.playerActionMode!==undefined&&typeof m.playerActionMode!=="boolean")return false;
+  if(m.askReboundAfterMiss!==undefined&&typeof m.askReboundAfterMiss!=="boolean")return false;
   if(!m.enabled||typeof m.enabled!=="object"||!groupIds.every(function(id){
     var value=m.enabled[id];
     return (id==="tap"&&value===undefined)||value===0||value===1||typeof value==="boolean";
@@ -994,7 +1006,7 @@ function exportBackup(){
     events:S.events,
     teams:S.teams.map(function(t){return {id:t.id,name:t.name,players:t.players.map(function(p){return {id:p.id,num:p.num,name:p.name,alias:playerAlias(p)};})};}),
     activeTeam:S.activeTeam,
-    enabled:S.enabled,actionOrder:S.actionOrder,actionColors:S.actionColors,playerActionMode:S.playerActionMode,periods:S.periods,period:S.period,
+    enabled:S.enabled,askReboundAfterMiss:S.askReboundAfterMiss,actionOrder:S.actionOrder,actionColors:S.actionColors,playerActionMode:S.playerActionMode,periods:S.periods,period:S.period,
     home:S.home,clubName:S.clubName,opponentName:S.opponentName,theme:S.theme
   }};
   return saveFile("respaldo-baloncesto-"+today().iso+".json",JSON.stringify(data,null,2),"application/json;charset=utf-8");
@@ -1082,7 +1094,46 @@ function importTeams(file){
   }).catch(function(){alert("No se pudo leer el archivo seleccionado.");});
 }
 
-var app=document.getElementById("app"),tooltipNode=null;
+var app=document.getElementById("app"),tooltipNode=null,actionOrderDrag=null;
+app.addEventListener("pointerdown",function(e){
+  var handle=e.target.closest(".drag-handle");
+  if(!handle||!e.isPrimary||e.button!==0)return;
+  var row=handle.closest("[data-order-row]");
+  if(!row)return;
+  e.preventDefault();
+  handle.setPointerCapture(e.pointerId);
+  actionOrderDrag={handle:handle,row:row,pointerId:e.pointerId,startX:e.clientX,startY:e.clientY,moved:false};
+});
+app.addEventListener("pointermove",function(e){
+  var drag=actionOrderDrag;
+  if(!drag||drag.pointerId!==e.pointerId)return;
+  if(!drag.moved&&Math.hypot(e.clientX-drag.startX,e.clientY-drag.startY)<4)return;
+  drag.moved=true;
+  drag.row.classList.add("dragging");
+  var target=document.elementFromPoint(e.clientX,e.clientY);
+  target=target&&target.closest("[data-order-row]");
+  if(!target||target===drag.row||target.parentElement!==drag.row.parentElement)return;
+  var rect=target.getBoundingClientRect();
+  target.parentElement.insertBefore(drag.row,e.clientY<rect.top+rect.height/2?target:target.nextSibling);
+});
+app.addEventListener("pointerup",function(e){
+  var drag=actionOrderDrag;
+  if(!drag||drag.pointerId!==e.pointerId)return;
+  actionOrderDrag=null;
+  drag.row.classList.remove("dragging");
+  if(drag.handle.hasPointerCapture(e.pointerId))drag.handle.releasePointerCapture(e.pointerId);
+  if(drag.moved){
+    setActionOrderFromRows(drag.row.parentElement);
+    var settingsScroll=drag.row.closest(".pg").scrollTop;
+    save();render();
+    document.querySelector(".pg").scrollTop=settingsScroll;
+  }
+});
+app.addEventListener("pointercancel",function(e){
+  if(!actionOrderDrag||actionOrderDrag.pointerId!==e.pointerId)return;
+  actionOrderDrag=null;
+  render();
+});
 function showActionTip(button){
   if(!button||!button.dataset.tip)return;
   if(!tooltipNode){
@@ -1261,6 +1312,7 @@ document.getElementById("app").addEventListener("change",function(e){
     return;
   }
   if(t.id==="playerActionMode"){S.playerActionMode=t.checked;save();return;}
+  if(t.id==="askReboundAfterMiss"){S.askReboundAfterMiss=t.checked;save();return;}
   if(t.id==="home"){S.home=t.checked;save();return;}
   if(t.id==="nper"){
     var v=Math.max(1,Math.min(8,parseInt(t.value,10)||4));
