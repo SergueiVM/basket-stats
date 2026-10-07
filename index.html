@@ -38,6 +38,10 @@ h1{font-size:1rem;margin:0}
 .period-toggle{min-width:48px;min-height:40px;padding:7px 12px;border:1px solid var(--line);border-radius:9px;background:var(--card);color:var(--text);font-size:.85rem;font-weight:800;cursor:pointer}
 .period-toggle.on{border-color:var(--accent);background:var(--accent);color:#fff}
 .period-toggle:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.summary-period-row{display:flex;align-items:center;gap:8px}
+.summary-period-row .period-toggles{flex:1;min-width:0}
+.summary-period-row .summary-visibility{flex:0 0 44px;background:var(--rivbg);border-color:var(--riv);color:var(--riv)}
+.summary-period-row .summary-visibility[aria-pressed="true"]{background:var(--riv);color:#fff}
 .perwrap{flex-shrink:0;margin:2px 8px 8px;padding:6px;background:var(--bg);border:1px solid var(--line);border-radius:10px}
 .per{display:flex;gap:8px;overflow-x:auto}
 .per button{flex:0 0 auto;min-width:52px;height:48px;border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:9px;font-weight:800;font-size:.92rem;cursor:pointer;padding:0 12px}
@@ -221,6 +225,8 @@ td.pt{font-weight:800;color:var(--accent)}
 .rebcell small{display:block;font-size:.55rem;color:var(--muted);white-space:nowrap}
 tr.tot td{font-weight:800;background:var(--btn)}
 tr.tot td:first-child{border-left:3px solid var(--accent)}
+tr.player-row.even td{background:var(--bg)}
+tr.player-row.odd td{background:var(--card)}
 tr.riv td{font-weight:800;color:var(--riv);background:var(--rivbg)}
 tr.riv td:first-child{border-left:3px solid var(--riv)}
 tr.riv td.pt{color:var(--riv)}
@@ -289,7 +295,7 @@ var COLOR_OPTIONS=[{id:"info",l:"Por defecto"},{id:"azul",l:"Azul"},{id:"celeste
 var LEGACY_COLOR_HEX={info:"#cff4fc",azul:"#dbeafe",celeste:"#cffafe",turquesa:"#ccfbf1",verde:"#dcfce7",lima:"#ecfccb",amarillo:"#fef3c7",naranja:"#ffedd5",coral:"#ffe4e1",rojo:"#fee2e2",rosa:"#fce7f3",morado:"#f3e8ff",lavanda:"#ede9fe",gris:"#e5e7eb",marron:"#f0e2d3"};
 function act(id){return ACT.filter(function(a){return a.id===id;})[0];}
 var DEFAULT_PLAYERS=12,MAX_ALIAS_LENGTH=8;
-var S={players:[],events:[],teams:[],activeTeam:null,editTeamId:null,enabled:{fal:1,per:1,rob:1,tap:1,reb:1,lib:1,d2:1,t3:1},askReboundAfterMiss:true,actionOrder:ORDERABLE_ACTIONS.map(function(a){return a.id;}),actionColors:{},playerActionMode:true,periods:4,period:1,summaryPeriods:null,home:true,clubName:"Nosotros",opponentName:"Rival",theme:"system",picker:null,view:"main",logExpanded:false,msg:"",warn:false};
+var S={players:[],events:[],teams:[],activeTeam:null,editTeamId:null,enabled:{fal:1,per:1,rob:1,tap:1,reb:1,lib:1,d2:1,t3:1},askReboundAfterMiss:true,actionOrder:ORDERABLE_ACTIONS.map(function(a){return a.id;}),actionColors:{},playerActionMode:true,periods:4,period:1,summaryPeriods:null,summaryHideInactive:false,home:true,clubName:"Nosotros",opponentName:"Rival",theme:"system",picker:null,view:"main",logExpanded:false,msg:"",warn:false};
 var seq=0;
 function uid(){seq++;return Date.now().toString(36)+seq;}
 function normalizePlayers(players){
@@ -856,28 +862,31 @@ function countEvents(evs){
 function computeTable(evs){
   var rows=[],totC=empty(),totPt=0;
   var clubName=S.clubName.trim()||"Nosotros",opponentName=S.opponentName.trim()||"Rival";
-  S.players.forEach(function(p){
+  S.players.forEach(function(p,i){
     var c=countEvents(evs.filter(function(e){return e.side==="us"&&e.p===p.id;}));
     var pt=c.l1+2*c.d1+3*c.t1;
-    rows.push({name:who(p),pt:pt,c:c,cls:""});
+    rows.push({name:who(p),pt:pt,c:c,cls:"player-row "+(i%2?"odd":"even")});
     for(var k in c)totC[k]+=c[k];totPt+=pt;
   });
   var eqEvs=evs.filter(function(e){return e.side==="us"&&!e.p&&e.a!=="tm";});
   if(eqEvs.length){
     var ce=countEvents(eqEvs);
     var pte=ce.l1+2*ce.d1+3*ce.t1;
-    rows.push({name:"Equipo",pt:pte,c:ce,cls:""});
+    rows.push({name:"Equipo",pt:pte,c:ce,cls:"player-row "+(S.players.length%2?"odd":"even")});
     for(var k in ce)totC[k]+=ce[k];totPt+=pte;
   }
-  rows.push({name:"Total "+clubName,pt:totPt,c:totC,cls:"tot"});
+  rows.push({name:clubName,pt:totPt,c:totC,cls:"tot"});
   var rivEvs=evs.filter(function(e){return e.side==="rival";});
   var cr=countEvents(rivEvs);
   var ptr=cr.l1+2*cr.d1+3*cr.t1;
   rows.push({name:opponentName,pt:ptr,c:cr,cls:"riv"});
   return rows;
 }
-function statTable(evs,title){
+function statTable(evs,title,hideInactive){
   var rows=computeTable(evs);
+  if(hideInactive)rows=rows.filter(function(r){
+    return r.cls.indexOf("player-row ")!==0||r.pt||r.c.fal||r.c.per||r.c.rob||r.c.tap||r.c.reb||r.c.l1||r.c.l0||r.c.d1||r.c.d0||r.c.t1||r.c.t0;
+  });
   var body=rows.map(function(r){return '<tr class="'+r.cls+'"><td>'+esc(r.name)+'</td><td class="pt">'+r.pt+'</td><td>'+r.c.fal+'</td><td>'+r.c.per+'</td><td>'+r.c.rob+'</td><td>'+r.c.tap+'</td><td class="rebcell">'+r.c.reb+'<small>'+r.c.rebOff+'/'+r.c.rebDef+'</small></td><td>'+r.c.l1+'/'+(r.c.l1+r.c.l0)+'</td><td>'+r.c.d1+'/'+(r.c.d1+r.c.d0)+'</td><td>'+r.c.t1+'/'+(r.c.t1+r.c.t0)+'</td></tr>';}).join("");
   return (title?'<div class="sec">'+title+'</div>':"")+'<table><colgroup><col style="width:22%"><col style="width:7%"><col style="width:7%"><col style="width:8%"><col style="width:7%"><col style="width:7%"><col style="width:8%"><col style="width:11%"><col style="width:11%"><col style="width:12%"></colgroup><tr><th>Equipo/jugador</th><th>Pts</th><th>Fal</th><th>Pér</th><th>Rob</th><th>Tap</th><th>Reb<br><span style="font-size:.55rem">O/D</span></th><th>TL</th><th>T2</th><th>T3</th></tr>'+body+'</table><div class="leg">Rebotes: total arriba · ofensivos/defensivos abajo</div>';
 }
@@ -888,12 +897,12 @@ function sumView(){
   h+='<div class="ex icon-actions"><button class="iconbtn" id="exportmatch" data-tip="Exportar partido" aria-label="Exportar partido"><i class="fa-solid fa-file-export" aria-hidden="true"></i></button>'
     +'<button class="iconbtn" data-x="importmatch" data-tip="Importar partido" aria-label="Importar partido"><i class="fa-solid fa-file-import" aria-hidden="true"></i></button>'
     +'<input id="matchfile" type="file" accept=".json,application/json" style="display:none"><button class="tb" id="xcsv"><i class="fa-solid fa-file-csv" aria-hidden="true"></i> Exportar CSV</button><button class="tb" id="xpdf" title="Imprimir o guardar como PDF"><i class="fa-solid fa-file-pdf" aria-hidden="true"></i> Exportar PDF</button></div>';
-  h+='<div class="period-toggles" aria-label="Cuartos o tiempos incluidos">'+Array.from({length:S.periods},function(_,i){
+  h+='<div class="summary-period-row"><div class="period-toggles" aria-label="Cuartos o tiempos incluidos">'+Array.from({length:S.periods},function(_,i){
     var n=i+1,on=selected.indexOf(n)!==-1;
     return '<button type="button" class="period-toggle'+(on?" on":"")+'" data-summary-period="'+n+'" aria-pressed="'+on+'">'+qLabel+n+'</button>';
-  }).join("")+'</div>';
+  }).join("")+'</div><button type="button" class="iconbtn summary-visibility" data-summary-visibility="toggle" aria-pressed="'+S.summaryHideInactive+'" aria-label="'+(S.summaryHideInactive?"Mostrar":"Ocultar")+' jugadores sin acciones" title="'+(S.summaryHideInactive?"Mostrar":"Ocultar")+' jugadores sin acciones"><i class="fa-solid '+(S.summaryHideInactive?"fa-eye":"fa-eye-slash")+'" aria-hidden="true"></i></button></div>';
   var summary=summaryData();
-  h+=statTable(summary.events,"");
+  h+=statTable(summary.events,"",S.summaryHideInactive);
   h+='<div class="leg">TL, T2, T3 = aciertos/intentos · Pts = puntos (1, 2 y 3 por acierto) · Equipo = acciones sin jugador asignado</div></div>';
   return h;
 }
@@ -941,7 +950,7 @@ function exportPdf(){
   var heading='<h1>'+esc(title)+'</h1><p>'+esc(S.clubName.trim()||"Nosotros")+' vs. '+esc(S.opponentName.trim()||"Rival")+'</p>'
     +'<p>'+esc(summary.title)+' · '+esc(new Date().toLocaleDateString("es-ES"))+'</p>';
   var html='<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><title>'+esc(title)+' - '+today().iso+'</title>'
-    +'<style>@page{size:landscape;margin:12mm}body{font:12px system-ui,-apple-system,"Segoe UI",sans-serif;color:#1c1c1e;margin:0}h1{font-size:20px;margin:0 0 4px}p{margin:3px 0 12px;color:#555}table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:10px}th,td{border:1px solid #b8b8b8;padding:5px 3px;text-align:center;overflow-wrap:anywhere}th{background:#eee;font-weight:700}th:first-child,td:first-child{text-align:left}tr.tot{font-weight:700;background:#f2f2f2}tr.riv{font-weight:700}td small{display:block;font-size:8px}.leg{margin-top:8px;color:#555;font-size:9px}thead{display:table-header-group}tr{break-inside:avoid}</style></head><body>'
+    +'<style>@page{size:landscape;margin:12mm}body{font:12px system-ui,-apple-system,"Segoe UI",sans-serif;color:#1c1c1e;margin:0}h1{font-size:20px;margin:0 0 4px}p{margin:3px 0 12px;color:#555}table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:10px}th,td{border:1px solid #b8b8b8;padding:5px 3px;text-align:center;overflow-wrap:anywhere}th{background:#eee;font-weight:700}th:first-child,td:first-child{text-align:left}tr.player-row.even td{background:#f5f5f5}tr.player-row.odd td{background:#fff}tr.tot{font-weight:700;background:#f2f2f2}tr.riv{font-weight:700}td small{display:block;font-size:8px}.leg{margin-top:8px;color:#555;font-size:9px}thead{display:table-header-group}tr{break-inside:avoid}</style></head><body>'
     +heading+statTable(summary.events,"")+'</bo'+'dy></html>';
   printWindow.document.open();
   printWindow.document.write(html);
@@ -1016,7 +1025,7 @@ function importMatch(file){
     match.teams=S.teams;
     match.activeTeam=null;
     applyLoaded(match);
-    S.view="sum";S.picker=null;save();render();
+    S.summaryHideInactive=false;S.view="sum";S.picker=null;save();render();
     alert("Partido importado correctamente.");
   },function(){alert("No se pudo leer el archivo seleccionado.");});
 }
@@ -1205,6 +1214,10 @@ app.addEventListener("click",function(e){
     S.summaryPeriods=selected.indexOf(n)===-1?selected.concat([n]):selected.filter(function(period){return period!==n;});
     render();return;
   }
+  if(d.summaryVisibility){
+    S.summaryHideInactive=!S.summaryHideInactive;
+    render();return;
+  }
   if(d.a){startAction(d.a);return;}
   if(d.orderAction){moveAction(d.orderAction,Number(d.orderDirection));return;}
   if(d.playeraction){startPlayerAction(d.playeraction);return;}
@@ -1276,7 +1289,7 @@ app.addEventListener("click",function(e){
   }
   var x=d.x;if(!x)return;
   if(x==="set"){S.view="set";}
-  else if(x==="fin"){S.view="sum";}
+  else if(x==="fin"){S.summaryHideInactive=false;S.view="sum";}
   else if(x==="back")S.view="main";
   else if(x==="back2set")S.view="set";
   else if(x==="back2teams")S.view="teams";
