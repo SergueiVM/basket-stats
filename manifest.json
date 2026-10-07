@@ -1,6 +1,6 @@
 {
   "name": "Estadísticas de baloncesto",
-  "short_name": "Baloncesto",
+  "short_name": "Basket Stats",
   "description": "Registro rápido de estadísticas de un partido de baloncesto",
   "start_url": "./index.html",
   "scope": "./",
