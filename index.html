@@ -417,6 +417,10 @@ function sortedPlayers(){
   return withIdx.map(function(x){return x.p;});
 }
 function whoLbl(side,p){if(side==="rival")return "Rival";return p?who(pl(p)):"Equipo";}
+function logActorLabel(event){
+  if(event.p)return whoLbl(event.side,event.p);
+  return event.side==="rival"?S.opponentName.trim()||"Rival":S.clubName.trim()||"Nosotros";
+}
 function foulsOf(pid){return S.events.filter(function(e){return e.side==="us"&&e.p===pid&&e.a==="fal";}).length;}
 function foulTypeOf(event){return FOUL_TYPES.some(function(type){return type.id===event.foulType;})?event.foulType:"normal";}
 function foulTypeLabel(typeId){return FOUL_TYPES.filter(function(type){return type.id===typeId;})[0].label;}
@@ -801,7 +805,7 @@ function renderLog(fullscreen){
       previousPeriod=period;
     }
     var a=act(e.a);
-    h+='<div class="ev"><div class="info"><span class="n">'+(item.index+1)+'</span><span class="q">'+(S.periods<=4?"C":"T")+(e.q||1)+'</span><span class="k '+a.k+(a.k==="n"?" action-"+e.a+actionColorClass(e.a):"")+'">'+evLabel(e)+'</span><span class="w'+(e.side==="rival"?" riv":"")+'">'+esc(whoLbl(e.side,e.p))+'</span></div><div class="btns"><button class="editbtn" data-edit="'+e.id+'" aria-label="Editar">✎</button><button class="delbtn" data-del="'+e.id+'" aria-label="Borrar">✕</button></div></div>';
+    h+='<div class="ev"><div class="info"><span class="n">'+(item.index+1)+'</span><span class="q">'+(S.periods<=4?"C":"T")+(e.q||1)+'</span><span class="k '+a.k+(a.k==="n"?" action-"+e.a+actionColorClass(e.a):"")+'">'+evLabel(e)+'</span><span class="w'+(e.side==="rival"?" riv":"")+'">'+esc(logActorLabel(e))+'</span></div><div class="btns"><button class="editbtn" data-edit="'+e.id+'" aria-label="Editar">✎</button><button class="delbtn" data-del="'+e.id+'" aria-label="Borrar">✕</button></div></div>';
   });
   return h+'</div>'+(fullscreen?'</div>':"");
 }
