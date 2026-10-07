@@ -38,6 +38,11 @@ h1{font-size:1rem;margin:0}
 .period-toggle{min-width:48px;min-height:40px;padding:7px 12px;border:1px solid var(--line);border-radius:9px;background:var(--card);color:var(--text);font-size:.85rem;font-weight:800;cursor:pointer}
 .period-toggle.on{border-color:var(--accent);background:var(--accent);color:#fff}
 .period-toggle:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.period-count-options{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.period-count-option{min-width:0;min-height:46px;padding:8px 10px;border:1px solid var(--line);border-radius:9px;background:var(--card);color:var(--text);font-size:.9rem;font-weight:800;cursor:pointer;touch-action:manipulation}
+.period-count-option.on{border-color:var(--accent);background:var(--accent);color:#fff}
+.period-count-custom{padding-right:5px;padding-left:5px;font-size:.72rem;white-space:nowrap}
+.custom-period-count{width:100%;margin-top:8px;padding:10px;border:1px solid var(--line);border-radius:9px;background:var(--card);color:var(--text);font:inherit}
 .summary-period-row{display:flex;align-items:center;gap:8px}
 .summary-period-row .period-toggles{flex:1;min-width:0}
 .summary-period-row .summary-visibility{flex:0 0 44px;background:var(--rivbg);border-color:var(--riv);color:var(--riv)}
@@ -295,7 +300,7 @@ var COLOR_OPTIONS=[{id:"info",l:"Por defecto"},{id:"azul",l:"Azul"},{id:"celeste
 var LEGACY_COLOR_HEX={info:"#cff4fc",azul:"#dbeafe",celeste:"#cffafe",turquesa:"#ccfbf1",verde:"#dcfce7",lima:"#ecfccb",amarillo:"#fef3c7",naranja:"#ffedd5",coral:"#ffe4e1",rojo:"#fee2e2",rosa:"#fce7f3",morado:"#f3e8ff",lavanda:"#ede9fe",gris:"#e5e7eb",marron:"#f0e2d3"};
 function act(id){return ACT.filter(function(a){return a.id===id;})[0];}
 var DEFAULT_PLAYERS=12,MAX_ALIAS_LENGTH=8;
-var S={players:[],events:[],teams:[],activeTeam:null,editTeamId:null,enabled:{fal:1,per:1,rob:1,tap:1,reb:1,lib:1,d2:1,t3:1},askReboundAfterMiss:true,actionOrder:ORDERABLE_ACTIONS.map(function(a){return a.id;}),actionColors:{},playerActionMode:true,periods:4,period:1,summaryPeriods:null,summaryHideInactive:false,home:true,clubName:"Nosotros",opponentName:"Rival",theme:"system",picker:null,view:"main",logExpanded:false,msg:"",warn:false};
+var S={players:[],events:[],teams:[],activeTeam:null,editTeamId:null,enabled:{fal:1,per:1,rob:1,tap:1,reb:1,lib:1,d2:1,t3:1},askReboundAfterMiss:true,actionOrder:ORDERABLE_ACTIONS.map(function(a){return a.id;}),actionColors:{},playerActionMode:true,periods:4,customPeriodInput:false,period:1,summaryPeriods:null,summaryHideInactive:false,home:true,clubName:"Nosotros",opponentName:"Rival",theme:"system",picker:null,view:"main",logExpanded:false,msg:"",warn:false};
 var seq=0;
 function uid(){seq++;return Date.now().toString(36)+seq;}
 function normalizePlayers(players){
@@ -784,7 +789,12 @@ function renderLog(fullscreen){
 
 function setView(){
   var h='<header><h1>Ajustes</h1><div class="bar"><button class="tb pri" data-x="back">✔ Listo</button></div></header><div class="pg">';
-  h+='<div class="sec">Formato del partido</div><div class="numset"><span class="leg">Cuartos / tiempos</span><input type="number" id="nper" min="1" max="8" value="'+S.periods+'"></div>';
+  h+='<div class="sec">Formato del partido</div><div class="leg">Nº Cuartos / Tiempos</div><div class="period-count-options" aria-label="Número de cuartos o tiempos">';
+  [1,4,6].forEach(function(periodCount){
+    h+='<button type="button" class="period-count-option'+(S.periods===periodCount&&!S.customPeriodInput?" on":"")+'" data-period-count="'+periodCount+'" aria-pressed="'+(S.periods===periodCount&&!S.customPeriodInput)+'">'+periodCount+'</button>';
+  });
+  h+='<button type="button" class="period-count-option period-count-custom'+(S.customPeriodInput||S.periods>6?" on":"")+'" data-period-count-custom aria-pressed="'+(S.customPeriodInput||S.periods>6)+'">Personalizar</button></div>';
+  if(S.customPeriodInput||S.periods>6)h+='<label class="namefield" style="margin-top:8px">Nº de Cuartos/Tiempos<input type="number" class="custom-period-count" id="customPeriodCount" min="1" max="8" step="1" value="'+S.periods+'" inputmode="numeric"></label><div class="leg">Introduce un número del 1 al 8.</div>';
   h+='<label class="ck"><input type="checkbox" id="home"'+(S.home?" checked":"")+'>Jugamos de local (decide el orden en el marcador)</label>';
   h+='<div class="sec">Nombres en el marcador</div><div class="leg">Independientes del nombre de las plantillas guardadas.</div>';
   h+='<label class="namefield">Nuestro equipo<input class="tnameinput" data-score-name="clubName" value="'+esc(S.clubName)+'" maxlength="30"></label>';
@@ -1218,6 +1228,15 @@ app.addEventListener("click",function(e){
     S.summaryHideInactive=!S.summaryHideInactive;
     render();return;
   }
+  if(d.periodCount){
+    S.periods=Number(d.periodCount);
+    S.customPeriodInput=false;
+    if(S.period>S.periods)S.period=S.periods;
+    S.summaryPeriods=null;save();render();return;
+  }
+  if(d.periodCountCustom!==undefined){
+    S.customPeriodInput=true;render();return;
+  }
   if(d.a){startAction(d.a);return;}
   if(d.orderAction){moveAction(d.orderAction,Number(d.orderDirection));return;}
   if(d.playeraction){startPlayerAction(d.playeraction);return;}
@@ -1348,8 +1367,9 @@ document.getElementById("app").addEventListener("change",function(e){
   if(t.id==="playerActionMode"){S.playerActionMode=t.checked;save();return;}
   if(t.id==="askReboundAfterMiss"){S.askReboundAfterMiss=t.checked;save();return;}
   if(t.id==="home"){S.home=t.checked;save();return;}
-  if(t.id==="nper"){
-    var v=Math.max(1,Math.min(8,parseInt(t.value,10)||4));
+  if(t.id==="customPeriodCount"){
+    var v=Number(t.value);
+    if(!Number.isInteger(v)||v<1||v>8){t.value=S.periods;return;}
     S.periods=v;if(S.period>v)S.period=v;S.summaryPeriods=null;save();
   }
 });
