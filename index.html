@@ -31,6 +31,9 @@ h1{font-size:1rem;margin:0}
 .matchhead .bar{gap:3px}
 .matchhead .tb{min-height:40px;padding:8px 6px;font-size:.72rem;white-space:nowrap}
 .matchhead .tb i{margin-right:3px}
+.matchhead .new-match{flex:0 0 40px;min-width:40px;min-height:40px;color:var(--danger)}
+.matchhead .match-title{display:flex;flex-shrink:0;align-items:center;gap:6px}
+.matchhead .app-icon{width:28px;height:28px;object-fit:contain}
 .matchhead h1{font-size:.85rem;white-space:nowrap}
 .tb.pri{background:var(--accent);color:#fff;border-color:var(--accent)}
 .tb.dg{color:var(--danger)}
@@ -48,7 +51,7 @@ h1{font-size:1rem;margin:0}
 .summary-period-row .summary-visibility{flex:0 0 44px;background:var(--rivbg);border-color:var(--riv);color:var(--riv)}
 .summary-period-row .summary-visibility[aria-pressed="true"]{background:var(--riv);color:#fff}
 .perwrap{flex-shrink:0;margin:2px 8px 8px;padding:6px;background:var(--bg);border:1px solid var(--line);border-radius:10px}
-.per{display:flex;gap:8px;overflow-x:auto}
+.per{display:flex;justify-content:safe center;gap:8px;overflow-x:auto}
 .per button{flex:0 0 auto;min-width:52px;height:48px;border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:9px;font-weight:800;font-size:.92rem;cursor:pointer;padding:0 12px}
 .per button.on{background:var(--accent);color:#fff;border-color:var(--accent)}
 .score{flex-shrink:0;margin:0 8px 10px;padding:6px;background:var(--card);border:1px solid var(--line);border-radius:12px;display:flex;align-items:center;justify-content:center;gap:12px}
@@ -757,7 +760,7 @@ function render(){
 }
 
 function mainView(){
-  var h='<header class="matchhead"><h1>🏀 Partido</h1><div class="bar"><button class="tb" data-x="set"><i class="fa-solid fa-gear" aria-hidden="true"></i>Ajustes</button><button class="tb" data-x="teams"><i class="fa-solid fa-people-group" aria-hidden="true"></i>Equipo</button><button class="tb pri" data-x="fin"><i class="fa-solid fa-chart-column" aria-hidden="true"></i>Resumen</button></div></header>';
+  var h='<header class="matchhead"><div class="match-title"><img class="app-icon" src="icon.svg" alt=""><h1>BASKET STATS</h1><button type="button" class="iconbtn new-match" data-x="new" data-tip="Nuevo partido · borrar registro" aria-label="Nuevo partido (borrar registro)" title="Nuevo partido (borrar registro)"><i class="fa-solid fa-file-circle-plus" aria-hidden="true"></i></button></div><div class="bar"><button class="tb" data-x="set"><i class="fa-solid fa-gear" aria-hidden="true"></i>Ajustes</button><button class="tb" data-x="teams"><i class="fa-solid fa-people-group" aria-hidden="true"></i>Equipo</button><button class="tb pri" data-x="fin"><i class="fa-solid fa-chart-column" aria-hidden="true"></i>Resumen</button></div></header>';
   h+='<div class="perwrap"><div class="per">'+Array.from({length:S.periods},function(_,i){return i+1;}).map(function(n){return '<button class="'+(S.period===n?"on":"")+'" data-per="'+n+'">'+(S.periods<=4?"C"+n:"T"+n)+'</button>';}).join("")+'</div></div>';
   var us=scoreOf("us"),riv=scoreOf("rival");
   var fUs=S.enabled.fal?'<span class="fouls">'+battery(foulsInPeriod("us",S.period))+'</span>':"";
@@ -838,7 +841,6 @@ function setView(){
   h+='<div class="sec">Transferir todo</div><div class="leg">Guarda o restaura el partido actual, los jugadores, los equipos guardados y los ajustes para cambiar de dispositivo.</div>';
   h+='<div class="ex"><button class="tb" data-x="exportbackup"><i class="fa-solid fa-download" aria-hidden="true"></i> Exportar todo</button> <button class="tb" data-x="importbackup"><i class="fa-solid fa-upload" aria-hidden="true"></i> Importar todo</button><input id="backupfile" type="file" accept=".json,application/json" style="display:none"></div>';
   h+='<div class="sec">Restablecer configuración</div><div class="leg">Restaura las opciones predeterminadas sin borrar el registro, los jugadores ni los equipos guardados.</div><button class="tb dg" data-x="resetsettings" style="padding:12px">Restablecer todas las opciones</button>';
-  h+='<button class="tb dg" data-x="new" style="padding:12px;margin-top:4px">Nuevo partido (borrar registro)</button>';
   return h+'</div>';
 }
 
@@ -933,7 +935,7 @@ function statTable(evs,title,hideInactive){
   return (title?'<div class="sec">'+title+'</div>':"")+'<table><colgroup><col style="width:22%"><col style="width:7%"><col style="width:7%"><col style="width:8%"><col style="width:7%"><col style="width:7%"><col style="width:8%"><col style="width:11%"><col style="width:11%"><col style="width:12%"></colgroup><tr><th>Equipo/jugador</th><th>Pts</th><th>Fal</th><th>Pér</th><th>Rob</th><th>Tap</th><th>Reb<br><span style="font-size:.55rem">O/D</span></th><th>TL</th><th>T2</th><th>T3</th></tr>'+body+'</table><div class="leg">Rebotes: total arriba · ofensivos/defensivos abajo</div>';
 }
 function sumView(){
-  var d=new Date(),h='<header><h1>Resumen</h1><div class="bar"><button class="tb" data-x="back">← Volver</button><button class="tb dg" data-x="new">Nuevo</button></div></header><div class="pg">';
+  var d=new Date(),h='<header><h1>Resumen</h1><div class="bar"><button class="tb" data-x="back">← Volver</button></div></header><div class="pg">';
   h+='<div class="leg">'+d.toLocaleDateString("es-ES")+' · '+S.events.length+' acciones registradas</div>';
   var selected=selectedSummaryPeriods(),qLabel=S.periods<=4?"C":"T";
   h+='<div class="ex icon-actions"><button class="iconbtn" id="exportmatch" data-tip="Exportar partido" aria-label="Exportar partido"><i class="fa-solid fa-file-export" aria-hidden="true"></i></button>'
@@ -1404,6 +1406,7 @@ app.addEventListener("click",function(e){
   }
   else if(x==="new"){
     if(!confirm("¿Empezar un nuevo partido? Se borrará todo el registro (jugadores y ajustes se mantienen)."))return;
+    if(!confirm("Confirmación final: se eliminarán todas las acciones registradas del partido y no se pueden recuperar. ¿Empezar un nuevo partido?"))return;
     S.events=[];S.period=1;S.summaryPeriods=null;S.view="main";save();
   }
   render();
