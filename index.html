@@ -80,7 +80,7 @@ h1{font-size:1rem;margin:0}
 .a.m{background:var(--ok);color:var(--okt)}
 .a.f{background:var(--ko);color:var(--kot)}
 .a.sel{background:var(--accent);color:#fff;box-shadow:0 0 0 3px var(--accent);transform:scale(.96)}
-.action-fal,.action-per,.action-rob,.action-reb,.action-tap,.action-tm{--action-bg-color:var(--action-bg);--action-fg-color:var(--action-text)}
+.action-fal,.action-per,.action-rob,.action-reb,.action-tap,.action-ast,.action-tm{--action-bg-color:var(--action-bg);--action-fg-color:var(--action-text)}
 .color-info{--action-bg-color:var(--action-bg);--action-fg-color:var(--action-text)}
 .color-azul{--action-bg-color:var(--palette-blue-bg);--action-fg-color:var(--palette-blue-text)}
 .color-celeste{--action-bg-color:var(--palette-cyan-bg);--action-fg-color:var(--palette-cyan-text)}
@@ -122,6 +122,7 @@ h1{font-size:1rem;margin:0}
 .pl.pk{padding:0 2px 10px}
 .pl.pk .p{height:78px}
 .teams.pk{padding:0 2px 10px}
+.teams.pk .pkextra{width:auto;min-height:68px;margin:0;padding:10px 8px}
 .pkextra{display:block;width:100%;min-height:62px;margin:0 2px;padding:14px;border:1px solid var(--line);background:var(--bg);color:var(--text);border-radius:13px;font-weight:700;font-size:1rem;cursor:pointer}
 .pkextra.equipo{background:var(--accent);color:#fff;border-color:var(--accent)}
 .pkextra.warn{background:var(--ko);color:var(--kot);border-color:transparent}
@@ -143,6 +144,7 @@ h1{font-size:1rem;margin:0}
   .pl.pk .p{height:90px}
   .teams.pk{gap:10px}
   .teams.pk button{height:78px;font-size:1.1rem}
+  .teams.pk .pkextra{height:78px}
   .pkextra{min-height:70px;font-size:1.1rem}
 }
 .bat{display:flex;gap:2px;margin-top:4px}
@@ -286,6 +288,7 @@ var ACT=[
  {id:"rob",l:"Robo",k:"n",grp:"rob",cat:"Robo",sub:""},
  {id:"tap",l:"Tapón",k:"n",grp:"tap",cat:"Tapón",sub:""},
  {id:"reb",l:"Rebote",k:"n",grp:"reb",cat:"Rebote",sub:""},
+ {id:"ast",l:"Asistencia",k:"n",grp:"ast",cat:"Asistencia",sub:""},
  {id:"l1",l:"T. libre ✓",k:"m",grp:"lib",cat:"Tiro libre",sub:"✓ acierto"},
  {id:"d1",l:"Tiro 2 ✓",k:"m",grp:"d2",cat:"Tiro de 2",sub:"✓ acierto"},
  {id:"t1",l:"Tiro 3 ✓",k:"m",grp:"t3",cat:"Tiro de 3",sub:"✓ acierto"},
@@ -299,14 +302,14 @@ var FOUL_TYPES=[
  {id:"circle",label:"Flagrante o técnica tipo 1",detail:"Con circulito"},
  {id:"disqualifying",label:"Descalificante",detail:"Descalificación directa"}
 ];
-var GROUPS=[{id:"fal",l:"Falta"},{id:"per",l:"Pérdida"},{id:"rob",l:"Robo"},{id:"tap",l:"Tapón"},{id:"reb",l:"Rebote"},{id:"lib",l:"Tiro libre"},{id:"d2",l:"Tiro de 2"},{id:"t3",l:"Tiro de 3"}];
+var GROUPS=[{id:"fal",l:"Falta"},{id:"per",l:"Pérdida"},{id:"rob",l:"Robo"},{id:"tap",l:"Tapón"},{id:"reb",l:"Rebote"},{id:"ast",l:"Asistencia"},{id:"lib",l:"Tiro libre"},{id:"d2",l:"Tiro de 2"},{id:"t3",l:"Tiro de 3"}];
 var ORDERABLE_ACTIONS=GROUPS.filter(function(g){return g.id!=="lib"&&g.id!=="d2"&&g.id!=="t3";});
 var COLOR_ACTIONS=GROUPS.filter(function(g){return g.id!=="lib"&&g.id!=="d2"&&g.id!=="t3";}).concat([{id:"tm",l:"Tiempo muerto"}]);
 var COLOR_OPTIONS=[{id:"info",l:"Por defecto"},{id:"azul",l:"Azul"},{id:"celeste",l:"Celeste"},{id:"turquesa",l:"Turquesa"},{id:"verde",l:"Verde"},{id:"lima",l:"Lima"},{id:"amarillo",l:"Amarillo"},{id:"naranja",l:"Naranja"},{id:"coral",l:"Coral"},{id:"rojo",l:"Rojo"},{id:"rosa",l:"Rosa"},{id:"morado",l:"Morado"},{id:"lavanda",l:"Lavanda"},{id:"gris",l:"Gris"},{id:"marron",l:"Marrón"}];
 var LEGACY_COLOR_HEX={info:"#cff4fc",azul:"#dbeafe",celeste:"#cffafe",turquesa:"#ccfbf1",verde:"#dcfce7",lima:"#ecfccb",amarillo:"#fef3c7",naranja:"#ffedd5",coral:"#ffe4e1",rojo:"#fee2e2",rosa:"#fce7f3",morado:"#f3e8ff",lavanda:"#ede9fe",gris:"#e5e7eb",marron:"#f0e2d3"};
 function act(id){return ACT.filter(function(a){return a.id===id;})[0];}
 var DEFAULT_PLAYERS=12,MAX_ALIAS_LENGTH=8;
-var S={players:[],events:[],teams:[],activeTeam:null,editTeamId:null,customTeamPeriodInput:false,enabled:{fal:1,per:1,rob:1,tap:1,reb:1,lib:1,d2:1,t3:1},askReboundAfterMiss:true,actionOrder:ORDERABLE_ACTIONS.map(function(a){return a.id;}),actionColors:{},playerActionMode:true,periods:4,customPeriodInput:false,period:1,summaryPeriods:null,summaryHideInactive:false,home:true,clubName:"Nosotros",opponentName:"Rival",theme:"system",picker:null,view:"main",logExpanded:false,msg:"",warn:false};
+var S={players:[],events:[],teams:[],activeTeam:null,editTeamId:null,customTeamPeriodInput:false,enabled:{fal:1,per:1,rob:1,tap:1,reb:1,ast:1,lib:1,d2:1,t3:1},askReboundAfterMiss:true,askAssistAfterMade:true,actionOrder:ORDERABLE_ACTIONS.map(function(a){return a.id;}),actionColors:{},playerActionMode:true,periods:4,customPeriodInput:false,period:1,summaryPeriods:null,summaryHideInactive:false,home:true,clubName:"Nosotros",opponentName:"Rival",theme:"system",picker:null,view:"main",logExpanded:false,msg:"",warn:false};
 var seq=0;
 function uid(){seq++;return Date.now().toString(36)+seq;}
 function normalizePlayers(players){
@@ -363,6 +366,7 @@ function resetSettings(){
   S.events.forEach(function(event){if(event.q>maxRecordedPeriod)maxRecordedPeriod=Math.min(8,event.q);});
   S.enabled=enabled;
   S.askReboundAfterMiss=true;
+  S.askAssistAfterMade=true;
   S.actionOrder=ORDERABLE_ACTIONS.map(function(action){return action.id;});
   S.actionColors={};
   S.playerActionMode=true;
@@ -470,9 +474,11 @@ function applyLoaded(d){
   S.clubName=d.clubName===undefined?"Nosotros":String(d.clubName);
   S.opponentName=d.opponentName===undefined?"Rival":String(d.opponentName);
   if(!d.enabled||!("tap" in d.enabled))S.enabled.tap=1;
+  S.enabled.ast=d.enabled&&"ast" in d.enabled?!!d.enabled.ast:1;
   if(d.enabled)for(var k in S.enabled)if(k in d.enabled)S.enabled[k]=!!d.enabled[k];
   if(d.showReboundButton===false)S.enabled.reb=0;
   S.askReboundAfterMiss=d.askReboundAfterMiss===undefined?reboundEnabled:d.askReboundAfterMiss===true;
+  S.askAssistAfterMade=d.askAssistAfterMade===undefined?true:d.askAssistAfterMade===true;
   S.teams=(d.teams||[]).map(function(t){if(!t)return t;var team={id:t.id,name:t.name,periods:Number.isInteger(t.periods)&&t.periods>=1&&t.periods<=8?t.periods:null,players:sortPlayersList((Array.isArray(t.players)?t.players:[]).map(function(p){return {id:p.id,num:p.num,name:p.name,alias:typeof p.alias==="string"?p.alias.slice(0,MAX_ALIAS_LENGTH):""};}))};return team;});
   S.activeTeam=d.activeTeam||null;
 }
@@ -493,7 +499,7 @@ function load(){
 function save(){
   S.players=sortPlayersList(S.players);
   S.teams=(S.teams||[]).map(function(t){if(!t)return t; t.players=sortPlayersList(Array.isArray(t.players)?t.players:[]); return t;});
-  try{localStorage.setItem(KEY,JSON.stringify({players:S.players,events:S.events,teams:S.teams,activeTeam:S.activeTeam,enabled:S.enabled,askReboundAfterMiss:S.askReboundAfterMiss,actionOrder:S.actionOrder,actionColors:S.actionColors,playerActionMode:S.playerActionMode,periods:S.periods,period:S.period,home:S.home,clubName:S.clubName,opponentName:S.opponentName}));}catch(e){}
+  try{localStorage.setItem(KEY,JSON.stringify({players:S.players,events:S.events,teams:S.teams,activeTeam:S.activeTeam,enabled:S.enabled,askReboundAfterMiss:S.askReboundAfterMiss,askAssistAfterMade:S.askAssistAfterMade,actionOrder:S.actionOrder,actionColors:S.actionColors,playerActionMode:S.playerActionMode,periods:S.periods,period:S.period,home:S.home,clubName:S.clubName,opponentName:S.opponentName}));}catch(e){}
 }
 function blankRoster(){return normalizePlayers([]);}
 function findTeam(id){return S.teams.filter(function(t){return t.id===id;})[0];}
@@ -540,6 +546,11 @@ function pickFoulType(type){
   if(o&&o.onPickFoulType)o.onPickFoulType(type);
   render();
 }
+function pickExtraAction(){
+  var o=S.picker;S.picker=null;
+  if(o&&o.onPickExtra)o.onPickExtra();
+  render();
+}
 function renderPicker(){
   var o=S.picker;if(!o)return "";
   var h='<div class="pkoverlay"><div class="pksheet">';
@@ -576,15 +587,29 @@ function renderPicker(){
     if(o.teamRow!==false){
       h+='<div class="teams pk"><button class="tus'+(o.selectedSide==="us"&&!o.selectedPlayer?" selected":"")+'" data-pks="us" data-pkp="">Equipo</button>';
       if(o.rival!==false)h+='<button class="triv'+(o.selectedSide==="rival"?" selected":"")+'" data-pks="rival" data-pkp="">Rival</button>';
+      if(o.extraActionInTeamRow&&o.extraAction)h+='<button class="pkextra warn" data-pkextra="1">'+esc(o.extraAction)+'</button>';
       h+='</div>';
     }
+    if(o.extraAction&&!o.extraActionInTeamRow)h+='<button class="pkextra warn" data-pkextra="1">'+esc(o.extraAction)+'</button>';
     if(o.extra)h+='<button class="pkextra '+(o.extra==="Equipo"?"equipo":"warn")+'" data-pkcancel="1">'+esc(o.extra)+'</button>';
   }
   h+='</div></div>';
   return h;
 }
+function openAssistPicker(titleHtml,onPick,selectedPlayer,onNoAssist){
+  openPicker({
+    titleHtml:titleHtml,teamRow:true,rival:false,selectedSide:"us",selectedPlayer:selectedPlayer||null,
+    onPick:function(side,p){onPick(p);},
+    extraAction:onNoAssist?"Sin asistencia":null,extraActionInTeamRow:true,
+    onPickExtra:onNoAssist
+  });
+}
 function startAction(id){
   var a=act(id);
+  if(id==="ast"){
+    openAssistPicker(subTitle(a),function(p){finalizeAction(id,"us",p);});
+    return;
+  }
   var titleHtml=id==="tap"?badge(a.cat,a.k,a.id)+'<span class="pksub">¿Quién realiza el tapón?</span>':subTitle(a);
   openPicker({titleHtml:titleHtml,teamRow:true,rival:true,extra:null,onPick:function(side,p){finalizeAction(id,side,p);}});
 }
@@ -633,6 +658,13 @@ function openEditDetails(ev){
     selectedAction:ev.a,
     onPickAction:function(newId){
       var a=act(newId);
+      if(newId==="ast"){
+        openAssistPicker(subTitle(a),function(p){
+          ev.a=newId;ev.side="us";ev.p=p;delete ev.pairId;delete ev.foulType;delete ev.off;delete ev.missedSide;
+          save();flash("✔ Editado · "+a.cat+" · "+whoLbl("us",p));
+        },ev.side==="us"?ev.p:null);
+        return;
+      }
       openPicker({
         titleHtml:subTitle(a),teamRow:true,rival:true,extra:"Cancelar",allPlayers:true,
         selectedSide:ev.side,selectedPlayer:ev.p,
@@ -659,6 +691,10 @@ function openEditDetails(ev){
 function finalizeAction(id,side,p){
   var a=act(id);
   if(navigator.vibrate){try{navigator.vibrate(20);}catch(x){}}
+  if(id==="ast"){
+    S.events.push({id:uid(),side:"us",p:p,a:id,q:S.period});
+    save();flash("✔ "+a.l+" · "+whoLbl("us",p));return;
+  }
   if(id==="tap"){
     var tapPairId=uid();
     S.events.push({id:uid(),side:side,p:p,a:"tap",q:S.period,pairId:tapPairId});
@@ -728,6 +764,13 @@ function finalizeAction(id,side,p){
   S.events.push({id:uid(),side:side,p:p,a:id,q:S.period});
   save();
   flash("✔ "+a.l+" · "+whoLbl(side,p));
+  if((id==="d1"||id==="t1")&&side==="us"&&S.askAssistAfterMade){
+    openAssistPicker(badge("Asistencia","n","ast")+'<span class="pksub">¿Quién dio la asistencia?</span>',function(assistPlayer){
+      S.events.push({id:uid(),side:"us",p:assistPlayer,a:"ast",q:S.period});
+      save();flash("✔ Asistencia · "+whoLbl("us",assistPlayer));
+    },null,function(){flash("✔ "+a.l+" · "+whoLbl(side,p)+" · Sin asistencia");});
+    return;
+  }
   if((id==="l0"||id==="d0"||id==="t0")&&S.askReboundAfterMiss){
     openPicker({
       titleHtml:badge("Rebote","n","reb")+'<span class="pksub">¿quién lo coge?</span>',teamRow:true,rival:true,extra:"No hay rebote",
@@ -835,6 +878,7 @@ function setView(){
   h+='</div><div class="sec">Tiros</div>';
   GROUPS.filter(function(g){return g.id==="lib"||g.id==="d2"||g.id==="t3";}).forEach(function(g){h+='<label class="ck"><input type="checkbox" data-grp="'+g.id+'"'+(S.enabled[g.id]?" checked":"")+'>'+g.l+'</label>';});
   h+='<label class="ck"><input type="checkbox" id="askReboundAfterMiss"'+(S.askReboundAfterMiss?" checked":"")+'>Preguntar rebote tras tiro fallado</label><div class="leg">Independiente de la acción Rebote: puedes ocultar su botón y mantener activa esta pregunta.</div>';
+  h+='<label class="ck"><input type="checkbox" id="askAssistAfterMade"'+(S.askAssistAfterMade?" checked":"")+'>Preguntar asistencia tras canasta de campo</label><div class="leg">Se pregunta tras canastas de 2 o 3 puntos. Puedes ocultar el botón Asistencia y mantener activa esta pregunta.</div>';
   h+='<div class="sec">Colores de las acciones</div><div class="leg">Los tiros mantienen sus colores de acierto y fallo. Puedes personalizar el resto de acciones.</div><div class="color-settings">';
   COLOR_ACTIONS.forEach(function(a){h+='<label class="color-row" for="action-color-'+a.id+'"><span>'+a.l+'</span><select id="action-color-'+a.id+'" data-action-color="'+a.id+'" aria-label="Color de '+a.l+'">'+COLOR_OPTIONS.map(function(option){return '<option value="'+option.id+'"'+((S.actionColors[a.id]||"info")===option.id?" selected":"")+'>'+option.l+'</option>';}).join("")+'</select></label>';});
   h+='</div>';
@@ -894,7 +938,7 @@ function teamView(){
   return h+'</div>';
 }
 
-function empty(){return {fal:0,per:0,rob:0,tap:0,reb:0,rebOff:0,rebDef:0,l1:0,l0:0,d1:0,d0:0,t1:0,t0:0};}
+function empty(){return {fal:0,per:0,rob:0,tap:0,reb:0,rebOff:0,rebDef:0,ast:0,l1:0,l0:0,d1:0,d0:0,t1:0,t0:0};}
 function countEvents(evs){
   var c=empty();
   evs.forEach(function(e){
@@ -929,10 +973,10 @@ function computeTable(evs){
 function statTable(evs,title,hideInactive){
   var rows=computeTable(evs);
   if(hideInactive)rows=rows.filter(function(r){
-    return r.cls.indexOf("player-row ")!==0||r.pt||r.c.fal||r.c.per||r.c.rob||r.c.tap||r.c.reb||r.c.l1||r.c.l0||r.c.d1||r.c.d0||r.c.t1||r.c.t0;
+    return r.cls.indexOf("player-row ")!==0||r.pt||r.c.fal||r.c.per||r.c.rob||r.c.tap||r.c.reb||r.c.ast||r.c.l1||r.c.l0||r.c.d1||r.c.d0||r.c.t1||r.c.t0;
   });
-  var body=rows.map(function(r){return '<tr class="'+r.cls+'"><td>'+esc(r.name)+'</td><td class="pt">'+r.pt+'</td><td>'+r.c.fal+'</td><td>'+r.c.per+'</td><td>'+r.c.rob+'</td><td>'+r.c.tap+'</td><td class="rebcell">'+r.c.reb+'<small>'+r.c.rebOff+'/'+r.c.rebDef+'</small></td><td>'+r.c.l1+'/'+(r.c.l1+r.c.l0)+'</td><td>'+r.c.d1+'/'+(r.c.d1+r.c.d0)+'</td><td>'+r.c.t1+'/'+(r.c.t1+r.c.t0)+'</td></tr>';}).join("");
-  return (title?'<div class="sec">'+title+'</div>':"")+'<table><colgroup><col style="width:22%"><col style="width:7%"><col style="width:7%"><col style="width:8%"><col style="width:7%"><col style="width:7%"><col style="width:8%"><col style="width:11%"><col style="width:11%"><col style="width:12%"></colgroup><tr><th>Equipo/jugador</th><th>Pts</th><th>Fal</th><th>Pér</th><th>Rob</th><th>Tap</th><th>Reb<br><span style="font-size:.55rem">O/D</span></th><th>TL</th><th>T2</th><th>T3</th></tr>'+body+'</table><div class="leg">Rebotes: total arriba · ofensivos/defensivos abajo</div>';
+  var body=rows.map(function(r){return '<tr class="'+r.cls+'"><td>'+esc(r.name)+'</td><td class="pt">'+r.pt+'</td><td>'+r.c.fal+'</td><td>'+r.c.per+'</td><td>'+r.c.rob+'</td><td>'+r.c.tap+'</td><td class="rebcell">'+r.c.reb+'<small>'+r.c.rebOff+'/'+r.c.rebDef+'</small></td><td>'+r.c.ast+'</td><td>'+r.c.l1+'/'+(r.c.l1+r.c.l0)+'</td><td>'+r.c.d1+'/'+(r.c.d1+r.c.d0)+'</td><td>'+r.c.t1+'/'+(r.c.t1+r.c.t0)+'</td></tr>';}).join("");
+  return (title?'<div class="sec">'+title+'</div>':"")+'<table><colgroup><col style="width:22%"><col style="width:6%"><col style="width:6%"><col style="width:7%"><col style="width:6%"><col style="width:6%"><col style="width:8%"><col style="width:6%"><col style="width:11%"><col style="width:11%"><col style="width:11%"></colgroup><tr><th>Equipo/jugador</th><th>Pts</th><th>Fal</th><th>Pér</th><th>Rob</th><th>Tap</th><th>Reb<br><span style="font-size:.55rem">O/D</span></th><th>Ast</th><th>TL</th><th>T2</th><th>T3</th></tr>'+body+'</table><div class="leg">Rebotes: total arriba · ofensivos/defensivos abajo</div>';
 }
 function sumView(){
   var d=new Date(),h='<header><h1>Resumen</h1><div class="bar"><button class="tb" data-x="back">← Volver</button></div></header><div class="pg">';
@@ -981,9 +1025,9 @@ async function saveFile(name,data,mime){
   setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},1000);
 }
 function exportCsv(){
-  var head=["Equipo/jugador","Puntos","Faltas","Pérdidas","Robos","Tapones","Rebotes totales","Rebotes ofensivos","Rebotes defensivos","TL acierto","TL fallo","T2 acierto","T2 fallo","T3 acierto","T3 fallo"];
+  var head=["Equipo/jugador","Puntos","Faltas","Pérdidas","Robos","Tapones","Rebotes totales","Rebotes ofensivos","Rebotes defensivos","Asistencias","TL acierto","TL fallo","T2 acierto","T2 fallo","T3 acierto","T3 fallo"];
   var summary=summaryData(),lines=[head];
-  computeTable(summary.events).forEach(function(r){lines.push([r.name,r.pt,r.c.fal,r.c.per,r.c.rob,r.c.tap,r.c.reb,r.c.rebOff,r.c.rebDef,r.c.l1,r.c.l0,r.c.d1,r.c.d0,r.c.t1,r.c.t0]);});
+  computeTable(summary.events).forEach(function(r){lines.push([r.name,r.pt,r.c.fal,r.c.per,r.c.rob,r.c.tap,r.c.reb,r.c.rebOff,r.c.rebDef,r.c.ast,r.c.l1,r.c.l0,r.c.d1,r.c.d0,r.c.t1,r.c.t0]);});
   var csv="\uFEFF"+lines.map(function(r){return r.map(csvq).join(";");}).join("\r\n")+"\r\n";
   saveFile("estadisticas-baloncesto-"+today().iso+".csv",csv,"text/csv;charset=utf-8");
 }
@@ -1005,7 +1049,7 @@ function exportPdf(){
 function exportMatch(){
   var data={format:"basket-stats-match",version:1,match:{
     players:S.players.map(function(p){return {id:p.id,num:p.num,name:p.name,alias:playerAlias(p)};}),events:S.events,
-    enabled:S.enabled,askReboundAfterMiss:S.askReboundAfterMiss,actionOrder:S.actionOrder,actionColors:S.actionColors,periods:S.periods,period:S.period,home:S.home,
+    enabled:S.enabled,askReboundAfterMiss:S.askReboundAfterMiss,askAssistAfterMade:S.askAssistAfterMade,actionOrder:S.actionOrder,actionColors:S.actionColors,periods:S.periods,period:S.period,home:S.home,
     clubName:S.clubName,opponentName:S.opponentName,playerActionMode:S.playerActionMode
   }};
   return saveFile("partido-baloncesto-"+today().iso+".json",JSON.stringify(data,null,2),"application/json;charset=utf-8");
@@ -1025,9 +1069,10 @@ function validMatchData(data){
   if(!validPlayers(m.players)||!Array.isArray(m.events))return false;
   if(m.playerActionMode!==undefined&&typeof m.playerActionMode!=="boolean")return false;
   if(m.askReboundAfterMiss!==undefined&&typeof m.askReboundAfterMiss!=="boolean")return false;
+  if(m.askAssistAfterMade!==undefined&&typeof m.askAssistAfterMade!=="boolean")return false;
   if(!m.enabled||typeof m.enabled!=="object"||!groupIds.every(function(id){
     var value=m.enabled[id];
-    return (id==="tap"&&value===undefined)||value===0||value===1||typeof value==="boolean";
+    return ((id==="tap"||id==="ast")&&value===undefined)||value===0||value===1||typeof value==="boolean";
   }))return false;
   if(m.actionColors!==undefined){
     if(!m.actionColors||typeof m.actionColors!=="object"||Array.isArray(m.actionColors))return false;
@@ -1079,7 +1124,7 @@ function exportBackup(){
     events:S.events,
     teams:S.teams.map(function(t){return {id:t.id,name:t.name,periods:t.periods===undefined?null:t.periods,players:t.players.map(function(p){return {id:p.id,num:p.num,name:p.name,alias:playerAlias(p)};})};}),
     activeTeam:S.activeTeam,
-    enabled:S.enabled,askReboundAfterMiss:S.askReboundAfterMiss,actionOrder:S.actionOrder,actionColors:S.actionColors,playerActionMode:S.playerActionMode,periods:S.periods,period:S.period,
+    enabled:S.enabled,askReboundAfterMiss:S.askReboundAfterMiss,askAssistAfterMade:S.askAssistAfterMade,actionOrder:S.actionOrder,actionColors:S.actionColors,playerActionMode:S.playerActionMode,periods:S.periods,period:S.period,
     home:S.home,clubName:S.clubName,opponentName:S.opponentName,theme:S.theme
   }};
   return saveFile("respaldo-baloncesto-"+today().iso+".json",JSON.stringify(data,null,2),"application/json;charset=utf-8");
@@ -1291,6 +1336,7 @@ app.addEventListener("click",function(e){
   if(d.logtoggle){S.logExpanded=!S.logExpanded;render();return;}
   if(d.pks!==undefined){pickTarget(d.pks,d.pkp||null);return;}
   if(d.pkcancel!==undefined){closePicker();return;}
+  if(d.pkextra!==undefined){pickExtraAction();return;}
   if(d.pkact!==undefined){pickAction(d.pkact);return;}
   if(d.pkfoul!==undefined){pickFoulType(d.pkfoul);return;}
   if(d.pkperiod!==undefined){
@@ -1437,6 +1483,7 @@ document.getElementById("app").addEventListener("change",function(e){
   }
   if(t.id==="playerActionMode"){S.playerActionMode=t.checked;save();return;}
   if(t.id==="askReboundAfterMiss"){S.askReboundAfterMiss=t.checked;save();return;}
+  if(t.id==="askAssistAfterMade"){S.askAssistAfterMade=t.checked;save();return;}
   if(t.id==="home"){S.home=t.checked;save();return;}
   if(t.id==="customPeriodCount"){
     var v=Number(t.value);
