@@ -119,7 +119,7 @@ h1{font-size:1rem;margin:0}
 .a[class*="action-"],.timeout[class*="action-"],.pkact[class*="action-"],.pkbadge[class*="action-"],.ev .k[class*="action-"]{background:var(--action-bg-color);color:var(--action-fg-color)}
 .pkact.selected{outline:3px solid var(--accent);outline-offset:1px}
 .pksub2{font-weight:500;opacity:.8;font-size:.8rem}
-.pl.pk{padding:0 2px 10px}
+.pl.pk{grid-template-columns:repeat(5,minmax(0,1fr));padding:0 2px 10px}
 .pl.pk .p{height:78px}
 .teams.pk{padding:0 2px 10px}
 .teams.pk .pkextra{width:auto;min-height:68px;margin:0;padding:10px 8px}
@@ -140,7 +140,7 @@ h1{font-size:1rem;margin:0}
   .pkactgroups .pkactrow{gap:10px}
   .pkactgroups .pkact{height:88px;font-size:1.1rem}
   .pkactlist .pkact{padding:20px;font-size:1.05rem}
-  .pl.pk{grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:10px}
+  .pl.pk{gap:10px}
   .pl.pk .p{height:90px}
   .teams.pk{gap:10px}
   .teams.pk button{height:78px;font-size:1.1rem}
@@ -155,8 +155,10 @@ h1{font-size:1rem;margin:0}
 .pbat i{width:7px;height:7px;border-radius:50%;background:var(--line);display:block}
 .pbat i.on{background:var(--accent)}
 .pbat i.on.over{background:var(--danger)}
-.roster{flex-shrink:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(70px,1fr));gap:7px;padding:0 8px 8px;pointer-events:none}
+.roster{flex-shrink:0;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:7px;padding:0 8px 8px;pointer-events:none;width:100%;align-self:center}
 .roster.interactive{pointer-events:auto}
+.main-teams{padding:0 8px 10px}
+.main-teams button{height:52px}
 .p.ro{cursor:default;justify-content:center}
 .p.ro .pts{font-size:.62rem;font-weight:500;color:var(--muted);margin-top:3px}
 .p.ro.action-player{cursor:pointer}
@@ -171,7 +173,13 @@ h1{font-size:1rem;margin:0}
 .p small.alias{font-size:.56rem;letter-spacing:0;white-space:nowrap;overflow-wrap:normal;text-overflow:clip}
 .p.rdy{border:2px solid var(--accent)}
 .pl.pk .p.selected{border:3px solid var(--accent);background:var(--btn)}
+.pl.pk .p:disabled{opacity:.48;cursor:not-allowed}
+.pl.pk .p:disabled:active{background:var(--card);color:var(--text)}
 .p:active{background:var(--accent);color:#fff}
+@media (min-width:700px){
+  .roster{gap:10px}
+  .roster .p{height:90px}
+}
 .teams{flex-shrink:0;display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:0 8px 10px}
 .teams button{height:68px;border:none;border-radius:13px;font-weight:800;font-size:1rem;cursor:pointer;touch-action:manipulation;color:#fff}
 .teams .tus{background:var(--accent)}
@@ -531,6 +539,7 @@ function closePicker(){
   render();
 }
 function pickTarget(side,p){
+  if(side==="us"&&p&&isPlayerDisqualified(p))return;
   var o=S.picker;S.picker=null;
   if(o&&o.onPick)o.onPick(side,p);
   render();
@@ -580,9 +589,10 @@ function renderPicker(){
       h+='</div>';
     }else h+='<div class="pkactlist">'+actionButtons(o.actions)+'</div>';
   }else{
-    var plist=o.allPlayers?sortedPlayers():selectablePlayers();
+    var plist=sortedPlayers();
     if(o.players!==false&&plist.length)h+='<div class="pl pk">'+plist.map(function(p){
-      return '<button class="p'+(o.selectedSide==="us"&&o.selectedPlayer===p.id?" selected":"")+'" data-pks="us" data-pkp="'+p.id+'" aria-label="'+esc(who(p))+'">'+esc(lab(p))+playerNameMarkup(p)+'</button>';
+      var disqualified=isPlayerDisqualified(p.id);
+      return '<button class="p'+(o.selectedSide==="us"&&o.selectedPlayer===p.id?" selected":"")+'" data-pks="us" data-pkp="'+p.id+'" aria-label="'+esc(who(p)+(disqualified?", descalificado":""))+'"'+(disqualified?' disabled title="Jugador descalificado"':'')+'>'+esc(lab(p))+playerNameMarkup(p)+(disqualified?'<small class="player-out">Descalificado</small>':"")+'</button>';
     }).join("")+'</div>';
     if(o.teamRow!==false){
       h+='<div class="teams pk"><button class="tus'+(o.selectedSide==="us"&&!o.selectedPlayer?" selected":"")+'" data-pks="us" data-pkp="">Equipo</button>';
@@ -622,6 +632,16 @@ function startPlayerAction(playerId){
     actions:actions,
     actionGrid:true,
     onPickAction:function(id){finalizeAction(id,"us",playerId);}
+  });
+}
+function startSideAction(side){
+  var actions=playerActions().filter(function(action){return action.id!=="ast";});
+  if((side!=="us"&&side!=="rival")||!actions.length)return;
+  openPicker({
+    titleHtml:'<span class="pksub">'+(side==="us"?"Equipo":"Rival")+' · Selecciona una acción</span>',
+    actions:actions,
+    actionGrid:true,
+    onPickAction:function(id){finalizeAction(id,side,null);}
   });
 }
 function startEdit(evId){
@@ -666,7 +686,7 @@ function openEditDetails(ev){
         return;
       }
       openPicker({
-        titleHtml:subTitle(a),teamRow:true,rival:true,extra:"Cancelar",allPlayers:true,
+        titleHtml:subTitle(a),teamRow:true,rival:true,extra:"Cancelar",
         selectedSide:ev.side,selectedPlayer:ev.p,
         onPick:function(side,p){
           function applyEdit(foulType){
@@ -834,6 +854,7 @@ function mainView(){
     if(playerActionsEnabled)return '<button type="button" class="p ro action-player" data-playeraction="'+p.id+'" aria-label="Registrar acción de '+esc(who(p))+'"'+(eliminated?' disabled title="Jugador descalificado"':'')+'>'+label+'</button>';
     return '<div class="p ro">'+label+'</div>';
   }).join("")+'</div>';
+  h+='<div class="teams main-teams"><button type="button" class="tus" data-sideaction="us">Equipo</button><button type="button" class="triv" data-sideaction="rival">Rival</button></div>';
   return h+renderLog(false);
 }
 function renderLog(fullscreen){
@@ -1332,6 +1353,7 @@ app.addEventListener("click",function(e){
   if(d.a){startAction(d.a);return;}
   if(d.orderAction){moveAction(d.orderAction,Number(d.orderDirection));return;}
   if(d.playeraction){startPlayerAction(d.playeraction);return;}
+  if(d.sideaction){startSideAction(d.sideaction);return;}
   if(d.per){S.period=+d.per;save();render();return;}
   if(d.logtoggle){S.logExpanded=!S.logExpanded;render();return;}
   if(d.pks!==undefined){pickTarget(d.pks,d.pkp||null);return;}
