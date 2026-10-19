@@ -251,6 +251,9 @@ tr.riv td.pt{color:var(--riv)}
 .leg{font-size:.7rem;color:var(--muted)}
 .ex{display:flex;gap:8px}
 .ex .tb{flex:1;padding:12px;font-size:.85rem}
+.tb.file-picker{position:relative;display:inline-flex;align-items:center;justify-content:center;overflow:hidden;text-align:center;cursor:pointer}
+.file-picker:focus-within{outline:2px solid var(--accent);outline-offset:2px}
+.file-picker input[type=file]{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;touch-action:manipulation}
 .iconbtn{position:relative;display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;border:1px solid var(--line);border-radius:9px;background:var(--card);color:var(--text);font-size:1rem;cursor:pointer;touch-action:manipulation}
 .iconbtn.pri{background:var(--accent);color:#fff;border-color:var(--accent)}
 .iconbtn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
@@ -904,7 +907,7 @@ function setView(){
   COLOR_ACTIONS.forEach(function(a){h+='<label class="color-row" for="action-color-'+a.id+'"><span>'+a.l+'</span><select id="action-color-'+a.id+'" data-action-color="'+a.id+'" aria-label="Color de '+a.l+'">'+COLOR_OPTIONS.map(function(option){return '<option value="'+option.id+'"'+((S.actionColors[a.id]||"info")===option.id?" selected":"")+'>'+option.l+'</option>';}).join("")+'</select></label>';});
   h+='</div>';
   h+='<div class="sec">Transferir todo</div><div class="leg">Guarda o restaura el partido actual, los jugadores, los equipos guardados y los ajustes para cambiar de dispositivo.</div>';
-  h+='<div class="ex"><button class="tb" data-x="exportbackup"><i class="fa-solid fa-download" aria-hidden="true"></i> Exportar todo</button> <button class="tb" data-x="importbackup"><i class="fa-solid fa-upload" aria-hidden="true"></i> Importar todo</button><input id="backupfile" type="file" accept=".json,application/json" style="display:none"></div>';
+  h+='<div class="ex"><button class="tb" data-x="exportbackup"><i class="fa-solid fa-download" aria-hidden="true"></i> Exportar todo</button> <label class="tb file-picker"> <i class="fa-solid fa-upload" aria-hidden="true"></i> Importar todo<input id="backupfile" type="file" aria-label="Importar todo"></label></div>';
   h+='<div class="sec">Restablecer configuración</div><div class="leg">Restaura las opciones predeterminadas sin borrar el registro, los jugadores ni los equipos guardados.</div><button class="tb dg" data-x="resetsettings" style="padding:12px">Restablecer todas las opciones</button>';
   return h+'</div>';
 }
@@ -923,7 +926,7 @@ function teamsView(){
   }else h+='<div class="leg">Aún no hay equipos guardados. Crea un equipo o guarda la plantilla actual.</div>';
   h+='<div class="ex icon-actions"><button class="iconbtn" data-x="newteam" data-tip="Nuevo equipo" aria-label="Nuevo equipo"><i class="fa-solid fa-plus" aria-hidden="true"></i></button>'
     +'<button class="iconbtn" data-x="saveteam" data-tip="Guardar como" aria-label="Guardar como"><i class="fa-solid fa-floppy-disk" aria-hidden="true"></i></button>'
-    +'<button class="iconbtn" data-x="importteams" data-tip="Importar equipo" aria-label="Importar equipo"><i class="fa-solid fa-upload" aria-hidden="true"></i></button><input id="teamsfile" type="file" accept=".json,application/json" style="display:none"></div>';
+    +'<label class="iconbtn file-picker" data-tip="Importar equipo" aria-label="Importar equipo"><i class="fa-solid fa-upload" aria-hidden="true"></i><input id="teamsfile" type="file" aria-label="Importar equipo"></label></div>';
   h+='<div class="leg">Exporta cada equipo desde su fila o importa una plantilla JSON para añadirla a tus equipos guardados.</div>';
   h+='<div class="sec">Jugadores del partido actual (dorsal, nombre y alias opcional)</div><div class="leg">El alias se muestra en una línea en los botones (máximo '+MAX_ALIAS_LENGTH+' caracteres).</div>';
   h+='<div class="leg">'+(S.activeTeam?'Cargados desde «'+esc((findTeam(S.activeTeam)||{}).name||"")+'»':'Plantilla sin guardar')+'</div>';
@@ -1004,8 +1007,8 @@ function sumView(){
   h+='<div class="leg">'+d.toLocaleDateString("es-ES")+' · '+S.events.length+' acciones registradas</div>';
   var selected=selectedSummaryPeriods(),qLabel=S.periods<=4?"C":"T";
   h+='<div class="ex icon-actions"><button class="iconbtn" id="exportmatch" data-tip="Exportar partido" aria-label="Exportar partido"><i class="fa-solid fa-file-export" aria-hidden="true"></i></button>'
-    +'<button class="iconbtn" data-x="importmatch" data-tip="Importar partido" aria-label="Importar partido"><i class="fa-solid fa-file-import" aria-hidden="true"></i></button>'
-    +'<input id="matchfile" type="file" accept=".json,application/json" style="display:none"><button class="tb" id="xcsv"><i class="fa-solid fa-file-csv" aria-hidden="true"></i> Exportar CSV</button><button class="tb" id="xpdf" title="Imprimir o guardar como PDF"><i class="fa-solid fa-file-pdf" aria-hidden="true"></i> Exportar PDF</button></div>';
+    +'<label class="iconbtn file-picker" data-tip="Importar partido" aria-label="Importar partido"><i class="fa-solid fa-file-import" aria-hidden="true"></i><input id="matchfile" type="file" aria-label="Importar partido"></label>'
+    +'<button class="tb" id="xcsv"><i class="fa-solid fa-file-csv" aria-hidden="true"></i> Exportar CSV</button><button class="tb" id="xpdf" title="Imprimir o guardar como PDF"><i class="fa-solid fa-file-pdf" aria-hidden="true"></i> Exportar PDF</button></div>';
   h+='<div class="summary-period-row"><div class="period-toggles" aria-label="Cuartos o tiempos incluidos">'+Array.from({length:S.periods},function(_,i){
     var n=i+1,on=selected.indexOf(n)!==-1;
     return '<button type="button" class="period-toggle'+(on?" on":"")+'" data-summary-period="'+n+'" aria-pressed="'+on+'">'+qLabel+n+'</button>';
@@ -1372,10 +1375,7 @@ app.addEventListener("click",function(e){
   }
   if(d.edit){startEdit(d.edit);return;}
   if(d.exportteam){exportTeam(d.exportteam);return;}
-  if(d.x==="importteams"){document.getElementById("teamsfile").click();return;}
-  if(d.x==="importmatch"){document.getElementById("matchfile").click();return;}
   if(d.x==="exportbackup"){exportBackup();return;}
-  if(d.x==="importbackup"){document.getElementById("backupfile").click();return;}
   if(d.del){
     var ev=S.events.filter(function(v){return v.id===d.del;})[0];
     if(!ev||!confirm("¿Borrar este registro?"))return;
