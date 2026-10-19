@@ -269,6 +269,7 @@ tr.riv td.pt{color:var(--riv)}
 .trow:last-child{border-bottom:none}
 .trow .tname{font-weight:700;font-size:.92rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .trow .tname small{display:block;font-weight:500;color:var(--accent);font-size:.65rem}
+.trow .tname small[hidden]{display:none}
 .trow .tbtns{display:flex;gap:6px;flex-wrap:wrap}
 .trow .tbtns button{flex:1;border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:9px;padding:11px 4px;font-size:.82rem;font-weight:700;cursor:pointer}
 .trow .tbtns .iconbtn{flex:0 0 44px;padding:0;font-size:.95rem}
@@ -515,6 +516,19 @@ function save(){
 }
 function blankRoster(){return normalizePlayers([]);}
 function findTeam(id){return S.teams.filter(function(t){return t.id===id;})[0];}
+function teamMatchesPlayers(team){
+  if(!team||S.activeTeam!==team.id)return false;
+  var teamPlayers=sortPlayersList(team.players||[]),matchPlayers=sortPlayersList(S.players);
+  return teamPlayers.length===matchPlayers.length&&teamPlayers.every(function(player,index){
+    var matchPlayer=matchPlayers[index];
+    return player.num===matchPlayer.num&&player.name===matchPlayer.name&&(player.alias||"")===(matchPlayer.alias||"");
+  });
+}
+function updateTeamUsageStatuses(){
+  document.querySelectorAll("[data-team-usage]").forEach(function(status){
+    status.hidden=!teamMatchesPlayers(findTeam(status.dataset.teamUsage));
+  });
+}
 function applyTheme(t){
   if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t);
   else document.documentElement.removeAttribute("data-theme");
@@ -918,7 +932,7 @@ function teamsView(){
   h+='<div class="sec">Plantillas guardadas</div>';
   if(S.teams.length){
     h+='<div class="tlist">'+S.teams.map(function(t){
-      return '<div class="trow"><span class="tname">'+esc(t.name)+(S.activeTeam===t.id?'<small>✓ En uso ahora</small>':'')+'</span>'
+      return '<div class="trow"><span class="tname">'+esc(t.name)+'<small data-team-usage="'+esc(t.id)+'"'+(teamMatchesPlayers(t)?"":" hidden")+'>✓ En uso ahora</small></span>'
         +'<div class="tbtns"><button class="iconbtn" data-editteam="'+t.id+'" data-tip="Editar equipo" aria-label="Editar equipo"><i class="fa-solid fa-pen-to-square" aria-hidden="true"></i></button>'
         +'<button class="iconbtn load" data-loadteam="'+t.id+'" data-tip="Cargar equipo" aria-label="Cargar equipo"><i class="fa-solid fa-play" aria-hidden="true"></i></button>'
         +'<button class="iconbtn" data-exportteam="'+t.id+'" data-tip="Exportar equipo" aria-label="Exportar equipo"><i class="fa-solid fa-download" aria-hidden="true"></i></button>'
@@ -1536,7 +1550,7 @@ document.getElementById("app").addEventListener("change",function(e){
 });
 document.getElementById("app").addEventListener("input",function(e){
   var t=e.target;
-  if(t.dataset.f){var p=pl(t.dataset.id);if(p){p[t.dataset.f]=t.value;S.players=sortPlayersList(S.players);save();}return;}
+  if(t.dataset.f){var p=pl(t.dataset.id);if(p){p[t.dataset.f]=t.value;S.players=sortPlayersList(S.players);save();updateTeamUsageStatuses();}return;}
   if(t.dataset.tf){
     var parts=t.dataset.tid.split("|"),tm=findTeam(parts[0]),tp=tm&&tm.players.filter(function(x){return x.id===parts[1];})[0];
     if(tp){tp[t.dataset.tf]=t.value;tm.players=sortPlayersList(tm.players);save();}
