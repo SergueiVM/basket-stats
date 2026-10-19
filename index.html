@@ -259,6 +259,7 @@ tr.riv td.pt{color:var(--riv)}
 .iconbtn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .roster-actions{display:flex;align-items:center;gap:8px;margin:8px 0}
 .roster-actions .add-player{margin-left:auto}
+.roster-actions .iconbtn.dg{color:var(--danger)}
 .action-tip{position:fixed;z-index:100;max-width:calc(100vw - 16px);padding:6px 9px;border-radius:7px;background:var(--text);color:var(--bg);font-size:.72rem;font-weight:600;line-height:1.2;text-align:center;white-space:normal;pointer-events:none;box-shadow:0 2px 8px rgba(0,0,0,.2)}
 .iconbtn:disabled{opacity:.4;cursor:default}
 .ex.icon-actions{align-items:center;gap:10px}
@@ -931,6 +932,7 @@ function teamsView(){
   h+='<div class="sec">Jugadores del partido actual (dorsal, nombre y alias opcional)</div><div class="leg">El alias se muestra en una línea en los botones (máximo '+MAX_ALIAS_LENGTH+' caracteres).</div>';
   h+='<div class="leg">'+(S.activeTeam?'Cargados desde «'+esc((findTeam(S.activeTeam)||{}).name||"")+'»':'Plantilla sin guardar')+'</div>';
   h+='<div class="roster-actions"><button class="iconbtn" data-x="blank" data-tip="Plantilla en blanco" aria-label="Plantilla en blanco"><i class="fa-solid fa-broom" aria-hidden="true"></i></button>'
+    +'<button class="iconbtn dg" data-x="clearplayers" data-tip="Eliminar todos los jugadores" aria-label="Eliminar todos los jugadores"'+(S.players.length?"":" disabled")+'><i class="fa-solid fa-users-slash" aria-hidden="true"></i></button>'
     +'<button class="iconbtn pri add-player" data-x="add" data-tip="Añadir jugador" aria-label="Añadir jugador"><i class="fa-solid fa-user-plus" aria-hidden="true"></i></button></div>';
   S.players.forEach(function(p){h+='<div class="er"><input class="no" id="match-player-num-'+p.id+'" data-f="num" data-id="'+p.id+'" value="'+esc(p.num)+'" maxlength="3" placeholder="Nº"><input class="nm" data-f="name" data-id="'+p.id+'" value="'+esc(p.name)+'" maxlength="20" placeholder="Nombre completo (opcional)"><input class="al" data-f="alias" data-id="'+p.id+'" value="'+esc(p.alias||"")+'" maxlength="'+MAX_ALIAS_LENGTH+'" placeholder="Alias para botones (opcional)"><button class="del" data-delp="'+p.id+'" aria-label="Eliminar">✕</button></div>';});
   return h+'</div>';
@@ -1456,6 +1458,15 @@ app.addEventListener("click",function(e){
   else if(x==="blank"){
     if(!confirm("¿Sustituir los jugadores actuales por una plantilla en blanco (12 dorsales sin nombre)? Se borrará el registro del partido."))return;
     S.players=blankRoster();S.events=[];S.period=1;S.summaryPeriods=null;S.activeTeam=null;save();
+  }
+  else if(x==="clearplayers"){
+    if(!S.players.length)return;
+    var playerIds=S.players.map(function(p){return p.id;});
+    var playerCount=S.players.length;
+    var playerEventsCount=S.events.filter(function(v){return v.side==="us"&&playerIds.indexOf(v.p)!==-1;}).length;
+    if(!confirm("¿Eliminar a los "+playerCount+" jugadores del partido"+(playerEventsCount?" y sus "+playerEventsCount+" acciones registradas":"")+"?"))return;
+    S.players=[];S.events=S.events.filter(function(v){return !(v.side==="us"&&playerIds.indexOf(v.p)!==-1);});
+    S.activeTeam=null;save();
   }
   else if(x==="newteam"){
     var nn=prompt("Nombre del nuevo equipo:");if(nn===null)return;nn=nn.trim();if(!nn)return;
