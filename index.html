@@ -874,14 +874,16 @@ function mainView(){
     h+='</div>';
   }
   h+=S.msg?'<div class="msg'+(S.warn?" warn":"")+'">'+esc(S.msg)+'</div>':'<div class="msg">Pulsa una acción para registrar una jugada</div>';
-  var playerActionsEnabled=S.playerActionMode&&playerActions().length>0;
+  var availableActions=playerActions();
+  var playerActionsEnabled=S.playerActionMode&&availableActions.length>0;
+  var sideActionsEnabled=playerActionsEnabled&&availableActions.some(function(action){return action.id!=="ast";});
   h+='<div class="logh">Jugadores</div><div class="roster'+(playerActionsEnabled?" interactive":"")+'">'+sortedPlayers().map(function(p){
     var eliminated=isPlayerDisqualified(p.id);
     var label=esc(lab(p))+playerNameMarkup(p)+'<span class="pts">'+ptsOf(p.id)+' pts</span>'+battery(foulsOf(p.id),"pbat")+(eliminated?'<span class="player-out">Descalificado</span>':"");
     if(playerActionsEnabled)return '<button type="button" class="p ro action-player" data-playeraction="'+p.id+'" aria-label="Registrar acción de '+esc(who(p))+'"'+(eliminated?' disabled title="Jugador descalificado"':'')+'>'+label+'</button>';
     return '<div class="p ro">'+label+'</div>';
   }).join("")+'</div>';
-  h+='<div class="teams main-teams"><button type="button" class="tus" data-sideaction="us">Equipo</button><button type="button" class="triv" data-sideaction="rival">Rival</button></div>';
+  if(sideActionsEnabled)h+='<div class="teams main-teams"><button type="button" class="tus" data-sideaction="us">Equipo</button><button type="button" class="triv" data-sideaction="rival">Rival</button></div>';
   return h+renderLog(false);
 }
 function renderLog(fullscreen){
