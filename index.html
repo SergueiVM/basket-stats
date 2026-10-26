@@ -1003,7 +1003,12 @@ function shootingPercentage(made,missed){
   return attempts?Math.round((made/attempts)*100)+"%":"—";
 }
 function shotStat(made,missed){
-  return made+"/"+(made+missed)+'<small>'+shootingPercentage(made,missed)+'</small>';
+  return made+" / "+(made+missed)+'<small>'+shootingPercentage(made,missed)+'</small>';
+}
+function fieldShotStat(twoMade,twoMissed,threeMade,threeMissed){
+  var twoAttempts=twoMade+twoMissed,threeAttempts=threeMade+threeMissed,total=twoAttempts+threeAttempts;
+  var twoShare=total?Math.round((twoAttempts/total)*100):null;
+  return twoAttempts+" / "+threeAttempts+'<small>'+(total?twoShare+"% / "+(100-twoShare)+"%":"— / —")+'</small>';
 }
 function computeTable(evs){
   var rows=[],totC=empty(),totPt=0;
@@ -1033,8 +1038,8 @@ function statTable(evs,title,hideInactive){
   if(hideInactive)rows=rows.filter(function(r){
     return r.cls.indexOf("player-row ")!==0||r.pt||r.c.fal||r.c.per||r.c.rob||r.c.tap||r.c.reb||r.c.ast||r.c.l1||r.c.l0||r.c.d1||r.c.d0||r.c.t1||r.c.t0;
   });
-  var body=rows.map(function(r){return '<tr class="'+r.cls+'"><td>'+esc(r.name)+'</td><td class="pt">'+r.pt+'</td><td>'+r.c.fal+'</td><td>'+r.c.per+'</td><td>'+r.c.rob+'</td><td>'+r.c.tap+'</td><td class="rebcell">'+r.c.reb+'<small>'+r.c.rebOff+'/'+r.c.rebDef+'</small></td><td>'+r.c.ast+'</td><td class="shotcell">'+shotStat(r.c.l1,r.c.l0)+'</td><td class="shotcell">'+shotStat(r.c.d1,r.c.d0)+'</td><td class="shotcell">'+shotStat(r.c.t1,r.c.t0)+'</td></tr>';}).join("");
-  return (title?'<div class="sec">'+title+'</div>':"")+'<table><colgroup><col style="width:22%"><col style="width:6%"><col style="width:6%"><col style="width:7%"><col style="width:6%"><col style="width:6%"><col style="width:8%"><col style="width:6%"><col style="width:11%"><col style="width:11%"><col style="width:11%"></colgroup><tr><th>Equipo/jugador</th><th>Pts</th><th>Fal</th><th>Pér</th><th>Rob</th><th>Tap</th><th>Reb<br><span style="font-size:.55rem">O/D</span></th><th>Ast</th><th>TL</th><th>T2</th><th>T3</th></tr>'+body+'</table><div class="leg">Rebotes: total arriba · ofensivos/defensivos abajo · TL, T2, T3: aciertos/intentos · porcentaje debajo</div>';
+  var body=rows.map(function(r){return '<tr class="'+r.cls+'"><td>'+esc(r.name)+'</td><td class="pt">'+r.pt+'</td><td>'+r.c.fal+'</td><td>'+r.c.per+'</td><td>'+r.c.rob+'</td><td>'+r.c.tap+'</td><td class="rebcell">'+r.c.reb+'<small>'+r.c.rebOff+' / '+r.c.rebDef+'</small></td><td>'+r.c.ast+'</td><td class="shotcell">'+shotStat(r.c.l1,r.c.l0)+'</td><td class="shotcell">'+shotStat(r.c.d1,r.c.d0)+'</td><td class="shotcell">'+shotStat(r.c.t1,r.c.t0)+'</td><td class="shotcell">'+fieldShotStat(r.c.d1,r.c.d0,r.c.t1,r.c.t0)+'</td></tr>';}).join("");
+  return (title?'<div class="sec">'+title+'</div>':"")+'<table><colgroup><col style="width:20%"><col style="width:5%"><col style="width:5%"><col style="width:6%"><col style="width:5%"><col style="width:5%"><col style="width:7%"><col style="width:5%"><col style="width:9%"><col style="width:9%"><col style="width:9%"><col style="width:15%"></colgroup><tr><th>Equipo/jugador</th><th>Pts</th><th>Fal</th><th>Pér</th><th>Rob</th><th>Tap</th><th>Reb<br><span style="font-size:.55rem">O/D</span></th><th>Ast</th><th>TL</th><th>T2</th><th>T3</th><th>T2:T3</th></tr>'+body+'</table><div class="leg">Rebotes: total arriba · ofensivos/defensivos abajo · TL, T2, T3: aciertos/intentos y porcentaje debajo · Tiros de campo: intentos de T2 / T3 y porcentaje de acierto en ese orden</div>';
 }
 function sumView(){
   var d=new Date(),h='<header><h1>Resumen</h1><div class="bar"><button class="tb" data-x="back">← Volver</button></div></header><div class="pg">';
