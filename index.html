@@ -269,10 +269,10 @@ tr.riv td.pt{color:var(--riv)}
 .qr-dialog{width:min(100%,440px);max-height:90dvh;overflow:auto;padding:16px;border-radius:14px;background:var(--card);color:var(--text);text-align:center}
 .qr-dialog h2{margin:0 0 8px;font-size:1.1rem}
 .qr-dialog .leg{margin:8px 0 14px}
-.qr-canvas{display:block;width:min(100%,360px);height:auto;margin:12px auto;background:#fff}
+.qr-canvas{display:block;width:min(100%,360px);height:auto;margin:12px auto;padding:24px;background:#fff}
 .qr-canvas canvas{display:block;width:100%;height:auto}
 .qr-canvas img{display:block;width:100%;height:auto}
-.qr-video{display:block;width:100%;max-height:52dvh;object-fit:cover;border-radius:10px;background:#111}
+.qr-video{display:block;width:100%;max-height:52dvh;object-fit:contain;border-radius:10px;background:#111}
 .qr-status{min-height:1.4em;color:var(--muted);font-size:.85rem}
 .qr-status.error{color:var(--danger)}
 .qr-actions{display:flex;justify-content:center;gap:8px;margin-top:12px}
@@ -1307,18 +1307,23 @@ async function startTeamQrScanner(){
   if(!video||!canvas)return;
   setTeamQrStatus("Solicitando acceso a la cámara…");
   try{
-    teamQrStream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:"environment"}}});
+    teamQrStream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:"environment"},width:{ideal:1280},height:{ideal:720}}});
     video.srcObject=teamQrStream;
     await video.play();
-    setTeamQrStatus("Apunta la cámara al código QR del otro dispositivo.");
+    setTeamQrStatus("Buscando el QR… Manténlo centrado y acerca la cámara si no lo detecta.");
     var context=canvas.getContext("2d",{willReadFrequently:true});
     function scanFrame(){
       if(!teamQrStream||!video.videoWidth){teamQrFrame=requestAnimationFrame(scanFrame);return;}
-      var width=Math.min(video.videoWidth,800),height=Math.round(video.videoHeight*width/video.videoWidth);
+      var width=Math.min(video.videoWidth,1280),height=Math.round(video.videoHeight*width/video.videoWidth);
       canvas.width=width;canvas.height=height;
       context.drawImage(video,0,0,width,height);
       var image=context.getImageData(0,0,width,height);
       var code=window.jsQR(image.data,image.width,image.height,{inversionAttempts:"attemptBoth"});
+      if(!code){
+        var cropWidth=Math.round(width*.7),cropHeight=Math.round(height*.7);
+        var crop=context.getImageData(Math.round((width-cropWidth)/2),Math.round((height-cropHeight)/2),cropWidth,cropHeight);
+        code=window.jsQR(crop.data,crop.width,crop.height,{inversionAttempts:"attemptBoth"});
+      }
       if(code){
         var payload,parsed;
         try{payload=decodeTeamQrPayload(code.data);parsed=payload&&JSON.parse(payload);}catch(e){setTeamQrStatus("El QR no contiene una plantilla válida.",true);teamQrFrame=requestAnimationFrame(scanFrame);return;}
@@ -1343,7 +1348,7 @@ function openTeamQrScanner(){
   var overlay=document.createElement("div");
   overlay.id="team-qr-overlay";
   overlay.className="qr-overlay";
-  overlay.innerHTML='<section class="qr-dialog" role="dialog" aria-modal="true" aria-labelledby="team-qr-title"><h2 id="team-qr-title">Importar equipo con QR</h2><p class="leg">Apunta al QR mostrado por Basket Stats en el otro dispositivo.</p><video id="team-qr-video" class="qr-video" playsinline muted aria-label="Vista de la cámara"></video><canvas id="team-qr-scan-canvas" hidden></canvas><div class="qr-status" id="team-qr-status" role="status"></div><div class="qr-actions"><button type="button" class="tb" data-qr-close>Cancelar</button><button type="button" class="tb pri" data-qr-scan>Activar cámara</button></div></section>';
+  overlay.innerHTML='<section class="qr-dialog" role="dialog" aria-modal="true" aria-labelledby="team-qr-title"><h2 id="team-qr-title">Importar equipo con QR</h2><p class="leg">Apunta al QR de otro dispositivo, centrado en la imagen. Acerca la cámara si hace falta.</p><video id="team-qr-video" class="qr-video" autoplay playsinline muted aria-label="Vista de la cámara"></video><canvas id="team-qr-scan-canvas" hidden></canvas><div class="qr-status" id="team-qr-status" role="status"></div><div class="qr-actions"><button type="button" class="tb" data-qr-close>Cancelar</button><button type="button" class="tb pri" data-qr-scan>Activar cámara</button></div></section>';
   document.body.appendChild(overlay);
   overlay.querySelector("[data-qr-scan]").focus();
 }
