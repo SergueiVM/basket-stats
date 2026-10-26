@@ -14,6 +14,8 @@
 <meta name="apple-mobile-web-app-title" content="Baloncesto">
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/css/all.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
 <style>
 :root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
 --bg:#f5f5f7;--card:#fff;--text:#1c1c1e;--muted:#6b6b70;--line:#dcdce0;--accent:#ea6a1f;--btn:#fff4ec;--action-bg:#cff4fc;--action-text:#055160;--ok:#dff3e4;--okt:#1b6b32;--ko:#fbe3e3;--kot:#b3261e;--palette-blue-bg:#dbeafe;--palette-blue-text:#1e40af;--palette-cyan-bg:#cffafe;--palette-cyan-text:#155e75;--palette-teal-bg:#ccfbf1;--palette-teal-text:#115e59;--palette-green-bg:#dcfce7;--palette-green-text:#166534;--palette-lime-bg:#ecfccb;--palette-lime-text:#3f6212;--palette-yellow-bg:#fef3c7;--palette-yellow-text:#854d0e;--palette-orange-bg:#ffedd5;--palette-orange-text:#9a3412;--palette-coral-bg:#ffe4e1;--palette-coral-text:#9f2d20;--palette-red-bg:#fee2e2;--palette-red-text:#991b1b;--palette-pink-bg:#fce7f3;--palette-pink-text:#9d174d;--palette-purple-bg:#f3e8ff;--palette-purple-text:#6b21a8;--palette-lavender-bg:#ede9fe;--palette-lavender-text:#5b21b6;--palette-gray-bg:#e5e7eb;--palette-gray-text:#374151;--palette-brown-bg:#f0e2d3;--palette-brown-text:#713f12;--danger:#c62828;--riv:#2f6fed;--rivbg:#eaf0ff}
@@ -263,6 +265,18 @@ tr.riv td.pt{color:var(--riv)}
 .tb.file-picker{position:relative;display:inline-flex;align-items:center;justify-content:center;overflow:hidden;text-align:center;cursor:pointer}
 .file-picker:focus-within{outline:2px solid var(--accent);outline-offset:2px}
 .file-picker input[type=file]{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;touch-action:manipulation}
+.qr-overlay{position:fixed;z-index:1000;inset:0;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(0,0,0,.65)}
+.qr-dialog{width:min(100%,440px);max-height:90dvh;overflow:auto;padding:16px;border-radius:14px;background:var(--card);color:var(--text);text-align:center}
+.qr-dialog h2{margin:0 0 8px;font-size:1.1rem}
+.qr-dialog .leg{margin:8px 0 14px}
+.qr-canvas{display:block;width:min(100%,360px);height:auto;margin:12px auto;background:#fff}
+.qr-canvas canvas{display:block;width:100%;height:auto}
+.qr-canvas img{display:block;width:100%;height:auto}
+.qr-video{display:block;width:100%;max-height:52dvh;object-fit:cover;border-radius:10px;background:#111}
+.qr-status{min-height:1.4em;color:var(--muted);font-size:.85rem}
+.qr-status.error{color:var(--danger)}
+.qr-actions{display:flex;justify-content:center;gap:8px;margin-top:12px}
+.qr-overlay[hidden]{display:none}
 .iconbtn{position:relative;display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;border:1px solid var(--line);border-radius:9px;background:var(--card);color:var(--text);font-size:1rem;cursor:pointer;touch-action:manipulation}
 .iconbtn.pri{background:var(--accent);color:#fff;border-color:var(--accent)}
 .iconbtn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
@@ -947,13 +961,15 @@ function teamsView(){
         +'<div class="tbtns"><button class="iconbtn" data-editteam="'+t.id+'" data-tip="Editar equipo" aria-label="Editar equipo"><i class="fa-solid fa-pen-to-square" aria-hidden="true"></i></button>'
         +'<button class="iconbtn load" data-loadteam="'+t.id+'" data-tip="Cargar equipo" aria-label="Cargar equipo"><i class="fa-solid fa-play" aria-hidden="true"></i></button>'
         +'<button class="iconbtn" data-exportteam="'+t.id+'" data-tip="Exportar equipo" aria-label="Exportar equipo"><i class="fa-solid fa-download" aria-hidden="true"></i></button>'
+        +'<button class="iconbtn" data-teamqr="'+t.id+'" data-tip="Mostrar QR del equipo" aria-label="Mostrar QR del equipo"><i class="fa-solid fa-qrcode" aria-hidden="true"></i></button>'
         +'<button class="iconbtn dg" data-delteam="'+t.id+'" data-tip="Eliminar equipo" aria-label="Eliminar equipo"><i class="fa-solid fa-trash" aria-hidden="true"></i></button></div></div>';
     }).join("")+'</div>';
   }else h+='<div class="leg">Aún no hay equipos guardados. Crea un equipo o guarda la plantilla actual.</div>';
   h+='<div class="ex icon-actions"><button class="iconbtn" data-x="newteam" data-tip="Nuevo equipo" aria-label="Nuevo equipo"><i class="fa-solid fa-plus" aria-hidden="true"></i></button>'
     +'<button class="iconbtn" data-x="saveteam" data-tip="Guardar como" aria-label="Guardar como"><i class="fa-solid fa-floppy-disk" aria-hidden="true"></i></button>'
+    +'<button class="iconbtn" data-x="scanqr" data-tip="Importar equipo con QR" aria-label="Importar equipo con QR"><i class="fa-solid fa-camera" aria-hidden="true"></i></button>'
     +'<label class="iconbtn file-picker" data-tip="Importar equipo" aria-label="Importar equipo"><i class="fa-solid fa-upload" aria-hidden="true"></i><input id="teamsfile" type="file" aria-label="Importar equipo"></label></div>';
-  h+='<div class="leg">Exporta cada equipo desde su fila o importa una plantilla JSON para añadirla a tus equipos guardados.</div>';
+  h+='<div class="leg">Exporta o importa equipos con un archivo JSON o mediante QR. Para escanear, permite el acceso a la cámara.</div>';
   h+='<div class="sec">Jugadores del partido actual (dorsal, nombre y alias opcional)</div><div class="leg">El alias se muestra en una línea en los botones (máximo '+MAX_ALIAS_LENGTH+' caracteres).</div>';
   h+='<div class="leg">'+(S.activeTeam?'Cargados desde «'+esc((findTeam(S.activeTeam)||{}).name||"")+'»':'Plantilla sin guardar')+'</div>';
   h+='<div class="roster-actions"><button class="iconbtn" data-x="blank" data-tip="Plantilla en blanco" aria-label="Plantilla en blanco"><i class="fa-solid fa-broom" aria-hidden="true"></i></button>'
@@ -1231,11 +1247,105 @@ function importBackup(file){
 }
 function exportTeam(teamId){
   var team=findTeam(teamId);if(!team)return;
-  var data={format:"basket-stats-teams",version:1,team:{
-    name:team.name,periods:team.periods,players:team.players.map(function(p){return {num:p.num,name:p.name,alias:p.alias||""};})
-  }};
+  var data=teamExportData(team);
   var filename=team.name.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"")||"equipo";
   return saveFile("plantilla-"+filename+"-"+today().iso+".json",JSON.stringify(data,null,2),"application/json;charset=utf-8");
+}
+function teamExportData(team){
+  return {format:"basket-stats-teams",version:1,team:{
+    name:team.name,periods:team.periods,players:team.players.map(function(p){return {num:p.num,name:p.name,alias:p.alias||""};})
+  }};
+}
+function encodeTeamQrPayload(team){
+  var bytes=new TextEncoder().encode(JSON.stringify(teamExportData(team))),binary="";
+  bytes.forEach(function(byte){binary+=String.fromCharCode(byte);});
+  return "BST1:"+btoa(binary);
+}
+function decodeTeamQrPayload(payload){
+  if(typeof payload!=="string"||payload.indexOf("BST1:")!==0)return null;
+  var binary=atob(payload.slice(5)),bytes=new Uint8Array(binary.length);
+  for(var i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);
+  return new TextDecoder().decode(bytes);
+}
+var teamQrStream=null,teamQrFrame=0;
+function closeTeamQr(){
+  if(teamQrFrame)cancelAnimationFrame(teamQrFrame);
+  teamQrFrame=0;
+  if(teamQrStream){teamQrStream.getTracks().forEach(function(track){track.stop();});teamQrStream=null;}
+  var overlay=document.getElementById("team-qr-overlay");
+  if(overlay)overlay.remove();
+}
+function setTeamQrStatus(message,isError){
+  var status=document.getElementById("team-qr-status");
+  if(status){status.textContent=message;status.classList.toggle("error",!!isError);}
+}
+function openTeamQr(teamId){
+  var team=findTeam(teamId);
+  if(!team)return;
+  closeTeamQr();
+  var overlay=document.createElement("div");
+  overlay.id="team-qr-overlay";
+  overlay.className="qr-overlay";
+  overlay.innerHTML='<section class="qr-dialog" role="dialog" aria-modal="true" aria-labelledby="team-qr-title"><h2 id="team-qr-title">Compartir «'+esc(team.name)+'»</h2><p class="leg">Escanea este código desde la pantalla de equipos del otro dispositivo. El QR contiene los datos de la plantilla.</p><div class="qr-canvas" id="team-qr-canvas" role="img" aria-label="Código QR de la plantilla"></div><div class="qr-status" id="team-qr-status" role="status"></div><div class="qr-actions"><button type="button" class="tb" data-qr-close>Cerrar</button></div></section>';
+  document.body.appendChild(overlay);
+  if(typeof window.QRCode!=="function"||!window.QRCode.CorrectLevel){
+    setTeamQrStatus("No se pudo cargar el generador QR. Comprueba la conexión e inténtalo de nuevo.",true);
+    return;
+  }
+  try{
+    new window.QRCode(document.getElementById("team-qr-canvas"),{text:encodeTeamQrPayload(team),width:640,height:640,typeNumber:0,correctLevel:window.QRCode.CorrectLevel.L});
+  }catch(error){setTeamQrStatus("La plantilla es demasiado grande para un único QR. Usa la exportación JSON.",true);}
+  overlay.querySelector("[data-qr-close]").focus();
+}
+async function startTeamQrScanner(){
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia||!window.jsQR){
+    setTeamQrStatus("El escáner QR no está disponible. Comprueba la conexión y usa HTTPS.",true);
+    return;
+  }
+  var video=document.getElementById("team-qr-video");
+  var canvas=document.getElementById("team-qr-scan-canvas");
+  if(!video||!canvas)return;
+  setTeamQrStatus("Solicitando acceso a la cámara…");
+  try{
+    teamQrStream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:"environment"}}});
+    video.srcObject=teamQrStream;
+    await video.play();
+    setTeamQrStatus("Apunta la cámara al código QR del otro dispositivo.");
+    var context=canvas.getContext("2d",{willReadFrequently:true});
+    function scanFrame(){
+      if(!teamQrStream||!video.videoWidth){teamQrFrame=requestAnimationFrame(scanFrame);return;}
+      var width=Math.min(video.videoWidth,800),height=Math.round(video.videoHeight*width/video.videoWidth);
+      canvas.width=width;canvas.height=height;
+      context.drawImage(video,0,0,width,height);
+      var image=context.getImageData(0,0,width,height);
+      var code=window.jsQR(image.data,image.width,image.height,{inversionAttempts:"attemptBoth"});
+      if(code){
+        var payload,parsed;
+        try{payload=decodeTeamQrPayload(code.data);parsed=payload&&JSON.parse(payload);}catch(e){setTeamQrStatus("El QR no contiene una plantilla válida.",true);teamQrFrame=requestAnimationFrame(scanFrame);return;}
+        if(!parsed||parsed.format!=="basket-stats-teams"||parsed.version!==1||(!parsed.team&&!Array.isArray(parsed.teams))){
+          setTeamQrStatus("El QR no contiene una plantilla compatible.",true);teamQrFrame=requestAnimationFrame(scanFrame);return;
+        }
+        closeTeamQr();
+        importTeams(new Blob([payload],{type:"application/json"}));
+        return;
+      }
+      teamQrFrame=requestAnimationFrame(scanFrame);
+    }
+    scanFrame();
+  }catch(error){
+    closeTeamQr();
+    openTeamQrScanner();
+    setTeamQrStatus(error&&error.name==="NotAllowedError"?"Permite el acceso a la cámara para escanear el QR.":"No se pudo iniciar la cámara. Comprueba que la página use HTTPS y que la cámara esté disponible.",true);
+  }
+}
+function openTeamQrScanner(){
+  closeTeamQr();
+  var overlay=document.createElement("div");
+  overlay.id="team-qr-overlay";
+  overlay.className="qr-overlay";
+  overlay.innerHTML='<section class="qr-dialog" role="dialog" aria-modal="true" aria-labelledby="team-qr-title"><h2 id="team-qr-title">Importar equipo con QR</h2><p class="leg">Apunta al QR mostrado por Basket Stats en el otro dispositivo.</p><video id="team-qr-video" class="qr-video" playsinline muted aria-label="Vista de la cámara"></video><canvas id="team-qr-scan-canvas" hidden></canvas><div class="qr-status" id="team-qr-status" role="status"></div><div class="qr-actions"><button type="button" class="tb" data-qr-close>Cancelar</button><button type="button" class="tb pri" data-qr-scan>Activar cámara</button></div></section>';
+  document.body.appendChild(overlay);
+  overlay.querySelector("[data-qr-scan]").focus();
 }
 function importTeams(file){
   return file.text().then(function(text){
@@ -1414,6 +1524,8 @@ app.addEventListener("click",function(e){
   }
   if(d.edit){startEdit(d.edit);return;}
   if(d.exportteam){exportTeam(d.exportteam);return;}
+  if(d.teamqr){openTeamQr(d.teamqr);return;}
+  if(d.x==="scanqr"){openTeamQrScanner();return;}
   if(d.x==="exportbackup"){exportBackup();return;}
   if(d.del){
     var ev=S.events.filter(function(v){return v.id===d.del;})[0];
@@ -1526,6 +1638,13 @@ app.addEventListener("click",function(e){
     S.events=[];S.period=1;S.summaryPeriods=null;S.view="main";save();
   }
   render();
+});
+document.addEventListener("click",function(e){
+  if(e.target.id==="team-qr-overlay"||e.target.closest("[data-qr-close]")){closeTeamQr();return;}
+  if(e.target.closest("[data-qr-scan]"))startTeamQrScanner();
+});
+document.addEventListener("keydown",function(e){
+  if(e.key==="Escape"&&document.getElementById("team-qr-overlay"))closeTeamQr();
 });
 document.getElementById("app").addEventListener("change",function(e){
   var t=e.target;
