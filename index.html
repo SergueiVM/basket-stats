@@ -906,8 +906,6 @@ function mainView(){
     }).join("");
     h+='</div>';
   }
-  var selectionMessage=S.selection&&S.selection.type==="action"?(S.selection.id==="ast"?"Elige al jugador · Pulsa de nuevo la acción para cancelar":"Elige el jugador o equipo relacionado · Pulsa de nuevo la acción para cancelar"):S.selection&&S.selection.type==="player"?"Elige la acción · Pulsa de nuevo el jugador para cancelar":S.selection&&S.selection.type==="side"?"Elige la acción de "+(S.selection.id==="us"?"Equipo":"Rival")+" · Pulsa de nuevo para cancelar":"";
-  h+=selectionMessage?'<div class="msg sel" aria-live="polite">'+esc(selectionMessage)+'</div>':S.msg?'<div class="msg'+(S.warn?" warn":" success")+'" aria-live="polite">'+esc(S.msg)+'</div>':'<div class="msg">Pulsa una acción para registrar una jugada</div>';
   var availableActions=playerActions();
   var playerActionsEnabled=availableActions.length>0;
   var actionSelection=S.selection&&S.selection.type==="action";
